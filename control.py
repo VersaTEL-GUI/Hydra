@@ -12,6 +12,8 @@ import sys
 
 class HydraControl():
     def __init__(self):
+        consts._init()
+
         self.transaction_id = s.get_transaction_id()
         consts.set_glo_tsc_id(f'{self.transaction_id}s')
         #log
@@ -87,6 +89,7 @@ class HydraControl():
     def run_mxh(self):
         id_list = consts.glo_id_list()
         consts.set_glo_str('maxhost')
+
         for id in id_list:
             consts.set_glo_iqn_list([])
             consts.set_glo_id(id)
@@ -106,10 +109,12 @@ class HydraControl():
         consts.append_glo_iqn_list(iqn)
         rpl = consts.glo_rpl()
         format_width = 105 if rpl == 'yes' else 80
+
         host = host_initiator.HostTest()
 
         if rpl == 'no':
             host.modify_host_iqn(iqn)
+
         for id_, str_ in dict_args.items():
             consts.set_glo_id(id_)
             consts.set_glo_str(str_)
@@ -168,6 +173,17 @@ class HydraControl():
             host.iscsi.login()
             host.start_test()
 
+    #将命令写入log，此处需要将命令转化为字典
+    #原格式：cmd = [main.py mxh -id 1 3 -c 5 -n 2]
+    #字典格式：
+    # cmd = [{
+    #     'type1' : 'main.py',
+    #     'type2' : 'mxh',
+    #     'type3' : '',
+    #     'id' : [1, 3],
+    #     '-c' : 5,
+    #     '-n' : 2
+    # }]
     def log_user_input(self,args):
         if args.subcommand in ['re', 'replay']:
             return

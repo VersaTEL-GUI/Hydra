@@ -2,10 +2,7 @@
 
 import consts
 import argparse
-import sys
-import time
 import sundry as s
-import log
 import logdb
 import debug_log
 import control as c
@@ -17,10 +14,8 @@ class HydraArgParse():
     parse argument for auto max lun test program
     '''
     def __init__(self):
-        consts._init()
         # -m:可能在某个地方我们要打印出来这个ID,哦,collect debug log时候就需要这个.但是这个id是什么时候更新的??理一下
         self.argparse_init()
-        self.cont = c.HydraControl()
 
     def argparse_init(self):
         self.parser = argparse.ArgumentParser(prog='Hydra',
@@ -75,12 +70,10 @@ class HydraArgParse():
             dest="uniq_str",
             help="The unique string for this test, affects related naming"
         )
-        #max host test with one lun
         parser_maxhost_lun = sub_parser.add_parser(
             'mh',
             help = 'Do the max supported Hosts test with one LUN'
         )
-        #max host test with number luns
         parser_maxhost_luns = sub_parser.add_parser(
             'mxh',
             help='Do the max supported Hosts test with N LUNs'
@@ -109,7 +102,6 @@ class HydraArgParse():
             dest="random_number",
             help='The number of hosts which is select for test'
         )
-        #delete resource
         parser_delete_re = sub_parser.add_parser(
             'del',
             aliases=['delete'],
@@ -130,9 +122,15 @@ class HydraArgParse():
             help="The unique string for this test, affects related naming"
         )
 
+
     def start(self):
+        control = c.HydraControl()
         args = self.parser.parse_args()
-        self.cont.log_user_input(args)
+        print('args',args)
+        control.log_user_input(args)
+
+        if args.subcommand:
+            pass
 
         try:
             if args.id_range:
@@ -145,34 +143,30 @@ class HydraArgParse():
                 consts.set_glo_str(args.uniq_str)
         except:
             pass
-        try:
-            if args.capacity:
-                self.cont.capacity = args.capacity
-        except:
-            pass
-        try:
-            self.cont.random_num = args.random_number
-        except:
-            pass
+
         if args.subcommand in ['mxl','maxlun']:
             id_list = consts.glo_id_list()
             for id_ in id_list:
-                self.cont.dict_id_str.update({id_: args.uniq_str})
-            self.cont.run_maxlun(self.cont.dict_id_str)
+                control.dict_id_str.update({id_: args.uniq_str})
+            print('self.cont.dict_id_str', control.dict_id_str)
+            #control.run_maxlun(control.dict_id_str)
         elif args.subcommand == 'mh':
-            self.cont.run_maxhost()
+            control.run_maxhost()
         elif args.subcommand == 'mxh':
-            self.cont.run_mxh()
+            control.capacity = args.capacity
+            if args.random_number:
+                control.random_num = args.random_number
+            #control.run_mxh()
         elif args.subcommand in ['del', 'delete']:
-            self.cont.delete_resource()
+            control.delete_resource()
         elif args.subcommand in ['re', 'replay']:
             consts.set_glo_rpl('yes')
             consts.set_glo_log_switch('no')
             logdb.prepare_db()
-            self.cont.prepare_replay(args)
+            control.prepare_replay(args)
 
             #mxl
-            self.cont.run_maxlun(self.cont.dict_id_str)
+            control.run_maxlun(control.dict_id_str)
 
 
         else:

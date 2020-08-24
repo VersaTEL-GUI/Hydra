@@ -71,7 +71,6 @@ class HostTest(object):
             # self._create_iscsi_session()
         if self.rpl == 'yes':
             pass
-            # s.find_session(VPLX_IP, SSH)
 
     def _mount(self, dev_name):
         '''
