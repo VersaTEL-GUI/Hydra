@@ -38,21 +38,28 @@ class Storage:
     '''
 
     def __init__(self):
-        self.logger = consts.glo_log()
-        self.ID = consts.glo_id()
-        self.STR = consts.glo_str()
         self.rpl = consts.glo_rpl()
         self.TID = consts.glo_tsc_id()
-        self.lun_name = f'{self.STR}_{self.ID}'
+        self.logger = consts.glo_log()
         if self.rpl == 'no':
             init_telnet()
 
+    def lun_create_map(self):
+        self.info()
+        self._lun_create()
+        self._lun_map()
 
-    def lun_create(self):
+    def info(self):
+        self.ID = consts.glo_id()
+        self.STR = consts.glo_str()
+        self.lun_name = f'{self.STR}_{self.ID}'
+
+    def _lun_create(self):
         '''
         Create LUN with 10M bytes in size
         '''
         oprt_id = s.get_oprt_id()
+        lun_name = f'{consts.glo_id()}_{consts.glo_str()}'
         unique_str = 'jMPFwXy2'
         cmd = f'lun create -s 10m -t linux /vol/esxi/{self.lun_name}'
         info_msg = f'Start to create LUN, LUN name: "{self.lun_name}",LUN ID: "{self.ID}"'
@@ -63,7 +70,7 @@ class Storage:
         else:
             s.handle_exception()
 
-    def lun_map(self):
+    def _lun_map(self):
         '''
         Map lun of specified lun_id to initiator group
         '''

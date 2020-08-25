@@ -4,7 +4,7 @@ import consts
 import time
 import vplx
 import storage
-import host_initiator
+import host_initiator as h
 import sundry as s
 import log
 import sys
@@ -19,11 +19,16 @@ class HydraControl():
         #log
         self.logger = log.Log(self.transaction_id)
         consts.set_glo_log(self.logger)
-        self.dict_id_str = {}
+
         self.capacity = None
         self.random_num=3
-        self.list_tid = None  # for replay
 
+    def instantiation_class(self):
+        # Initialize connection
+        self._netapp = storage.Storage()
+        self._drbd = vplx.VplxDrbd()
+        self._crm = vplx.VplxCrm()
+        self._host = h.HostTest()
 
     def _storage(self):
         '''
@@ -104,47 +109,38 @@ class HydraControl():
                 host.start_test()
 
     @s.record_exception
-    def run_maxlun(self, dict_args):
+    def run_maxlun(self, args):
+        self.instantiation_class()
+
+        # wirte consts id_range and uiq_str
+        id_list = s.change_id_range_to_list(args.id_range)
+        consts.set_glo_id_list(id_list)
+        consts.set_glo_str(args.uniq_str)
+
         iqn = s.generate_iqn('0')
         consts.append_glo_iqn_list(iqn)
         rpl = consts.glo_rpl()
+
         format_width = 105 if rpl == 'yes' else 80
 
-        host = host_initiator.HostTest()
-
         if rpl == 'no':
-            host.modify_host_iqn(iqn)
+            self._host.modify_host_iqn(iqn)
 
-        for id_, str_ in dict_args.items():
-            consts.set_glo_id(id_)
-            consts.set_glo_str(str_)
-            print(f'**** Start working for ID {consts.glo_id()} ****'.center(format_width, '='))
-            if rpl == 'no':
-                self.transaction_id = s.get_transaction_id()
-                self.logger = log.Log(self.transaction_id)
-                consts.set_glo_log(self.logger)
-                consts.set_glo_tsc_id(self.transaction_id)
-                self.logger.write_to_log(
-                    'F', 'DATA', 'STR', 'Start a new trasaction', '', f'{consts.glo_id()}')
-                self.logger.write_to_log(
-                    'F', 'DATA', 'STR', 'unique_str', '', f'{consts.glo_str()}')
-            if self.list_tid:
-                tid = self.list_tid[0]
-                self.list_tid.remove(tid)
-                consts.set_glo_tsc_id(tid)
+        for lun_id in consts.glo_id_list():
+            consts.set_glo_id(lun_id)
+            print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
                 s.pwl('Start to configure LUN on NetApp Storage', 0, s.get_oprt_id(), 'start')
-                self._storage()
+                self._netapp.lun_create_map()
                 time.sleep(1.5)
                 s.pwl('Start to configure DRDB resource and CRM resource on VersaPLX', 0, s.get_oprt_id(), 'start')
-                self._vplx_drbd()
-                self._vplx_crm()
+                self._drbd.drbd_cfg()
+                self._crm.crm_cfg()
                 time.sleep(1.5)
                 s.pwl('Start to format，write and read the LUN on Host', 0, s.get_oprt_id(), 'start')
                 print(f'{"":-^{format_width}}', '\n')
                 time.sleep(1.5)
-                host.iscsi.create_session()
-                host.start_test()
+                self._host.io_test()
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
 
@@ -177,18 +173,17 @@ class HydraControl():
     #原格式：cmd = [main.py mxh -id 1 3 -c 5 -n 2]
     #字典格式：
     # cmd = [{
-    #     'type1' : 'main.py',
-    #     'type2' : 'mxh',
-    #     'type3' : '',
-    #     'id' : [1, 3],
-    #     '-c' : 5,
-    #     '-n' : 2
+    #     'type1' : 'mxh',
+    #     'type2' : '',
+    #     'id_range' : [1, 3],
+    #     'capacity' : 5,
+    #
     # }]
-    def log_user_input(self,args):
-        if args.subcommand in ['re', 'replay']:
+    def log_user_input(self, args):
+        if args.subcommand == 're':
             return
         if sys.argv:
-            cmd = ' '.join(sys.argv)
+            cmd = vars(args)
             if consts.glo_rpl() == 'no':
                 self.logger.write_to_log(
                     'T', 'DATA', 'input', 'user_input', '', cmd)
@@ -236,3 +231,5 @@ class HydraControl():
             # 执行日志全部的事务
             self.list_tid = db.get_all_transaction()
             self.get_valid_transaction(self.list_tid)
+
+

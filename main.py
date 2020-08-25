@@ -26,10 +26,18 @@ class HydraArgParse():
         #     dest="test",
         #     help="just for test"
         # )
+        self.parser.add_argument(
+            '-v',
+            '--version',
+            dest='version',
+            action='store_true',
+            help='version mode'
+        )
         sub_parser = self.parser.add_subparsers(dest='subcommand')
+        #replay  or re
         parser_replay = sub_parser.add_parser(
             're',
-            aliases=['replay'],
+            #aliases=['replay'],
             formatter_class=argparse.RawTextHelpFormatter,
             help='Replay the Hydra program'
         )
@@ -49,9 +57,10 @@ class HydraArgParse():
             help='The time period for replay'
         )
         self.parser_replay = parser_replay
+        #lun or maxlun
         parser_maxlun = sub_parser.add_parser(
-            'mxl',
-            aliases=['maxlun'],
+            'lun',
+            #aliases=['maxlun'],
             help='Do the max supported LUNs test'
         )
         parser_maxlun.add_argument(
@@ -70,15 +79,23 @@ class HydraArgParse():
             dest="uniq_str",
             help="The unique string for this test, affects related naming"
         )
-        parser_maxhost_lun = sub_parser.add_parser(
-            'mh',
+        #iqn
+        parser_iqn = sub_parser.add_parser(
+            'iqn',
+            help = 'Do the max supported Hosts test with one LUN or N LUNs'
+        )
+        parser_iqn_sub = parser_iqn.add_subparsers(dest='iqn_sub')
+        #iqn otm
+        parser_iqn_otm = parser_iqn_sub.add_parser(
+            'otm',
             help = 'Do the max supported Hosts test with one LUN'
         )
-        parser_maxhost_luns = sub_parser.add_parser(
-            'mxh',
+        #iqn mtm
+        parser_iqn_mtm = parser_iqn_sub.add_parser(
+            'mtm',
             help='Do the max supported Hosts test with N LUNs'
         )
-        parser_maxhost_luns.add_argument(
+        parser_iqn_mtm.add_argument(
             '-id',
             required=True,
             action="store",
@@ -87,7 +104,7 @@ class HydraArgParse():
             nargs='+',
             help='ID or ID range'
         )
-        parser_maxhost_luns.add_argument(
+        parser_iqn_mtm.add_argument(
             '-c',
             required=True,
             action="store",
@@ -95,16 +112,17 @@ class HydraArgParse():
             type=int,
             help="The capacity of each Lun, which represents the number of hosts that can be mapped"
         )
-        parser_maxhost_luns.add_argument(
+        parser_iqn_mtm.add_argument(
             '-n',
             action="store",
             type=int,
             dest="random_number",
             help='The number of hosts which is select for test'
         )
+        #del or delete
         parser_delete_re = sub_parser.add_parser(
             'del',
-            aliases=['delete'],
+            #aliases=['delete'],
             help='Confirm to delete LUNs'
         )
         parser_delete_re.add_argument(
@@ -124,54 +142,39 @@ class HydraArgParse():
 
 
     def start(self):
-        control = c.HydraControl()
+        ctrl = c.HydraControl()
         args = self.parser.parse_args()
-        print('args',args)
-        control.log_user_input(args)
 
-        if args.subcommand:
-            pass
+        if args.subcommand == 'lun':
+            ctrl.log_user_input(args)
+            ctrl.run_maxlun(args)
 
-        try:
-            if args.id_range:
-                id_list = s.change_id_range_to_list(args.id_range)
-                consts.set_glo_id_list(id_list)
-        except:
-            pass
-        try:
-            if args.uniq_str:
-                consts.set_glo_str(args.uniq_str)
-        except:
-            pass
-
-        if args.subcommand in ['mxl','maxlun']:
-            id_list = consts.glo_id_list()
-            for id_ in id_list:
-                control.dict_id_str.update({id_: args.uniq_str})
-            print('self.cont.dict_id_str', control.dict_id_str)
-            #control.run_maxlun(control.dict_id_str)
         elif args.subcommand == 'mh':
-            control.run_maxhost()
+            ctrl.log_user_input(args)
+            ctrl.run_maxhost()
+
         elif args.subcommand == 'mxh':
-            control.capacity = args.capacity
+            ctrl.capacity = args.capacity
             if args.random_number:
-                control.random_num = args.random_number
-            #control.run_mxh()
-        elif args.subcommand in ['del', 'delete']:
-            control.delete_resource()
+                ctrl.random_num = args.random_number
+            ctrl.run_mxh()
+
+        elif args.subcommand == 'del':
+            pass
+            #ctrl.delete_resource()
+
         elif args.subcommand in ['re', 'replay']:
             consts.set_glo_rpl('yes')
             consts.set_glo_log_switch('no')
             logdb.prepare_db()
-            control.prepare_replay(args)
+            ctrl.prepare_replay(args)
 
-            #mxl
-            control.run_maxlun(control.dict_id_str)
+            ctrl.run_maxlun()
 
-
+        elif args.version:
+            pass
         else:
             self.parser.print_help()
-        # args.func(args)
 
         # if args.test:
         #     debug_log.collect_debug_log()

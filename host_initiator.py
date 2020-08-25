@@ -58,10 +58,9 @@ class HostTest(object):
     
       
     def modify_host_iqn(self,initiator_iqn):
-        if self.iscsi.disconnect_session(TARGET_IQN):
-            if self.iscsi.change_host_iqn(initiator_iqn):
+        if self.iscsi.modify_host_iqn(initiator_iqn):
+            if self.iscsi.restart_service():
                 return True
-
 
     
     def _prepare(self):
@@ -153,17 +152,25 @@ class HostTest(object):
         read_perf = self._get_dd_perf(cmd_dd_read, unique_str='hsjG0miU')
         s.pwl(f'Read  Speed: {read_perf}', 3, '', 'finish')
 
-    def start_test(self):
-        # s.pwl('Start iscsi login',2,'','start')
-        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 2)
+    def _get_disk_from_vplx(self):
+        self.iscsi.create_session()
         dev_name = s.get_disk_dev(SSH,'LIO-ORG')
+        return dev_name
+
+    def _mount_disk(self):
+        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 2)
+        dev_name = self._get_disk_from_vplx()
         if self._format(dev_name):
             if self._mount(dev_name):
-                self._get_test_perf()
+                return True
             else:
                 s.pwce(f'Failed to mount device "{dev_name}"', 3, 2)
         else:
             s.pwce(f'Failed to format device "{dev_name}"', 3, 2)
+
+    def io_test(self):
+        self._mount_disk()
+        self._get_test_perf()
 
     def host_rescan_r(self):
         '''

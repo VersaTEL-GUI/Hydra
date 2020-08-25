@@ -5,6 +5,7 @@ import time
 import consts
 import log
 import re
+
 SSH = None
 
 HOST = '10.203.1.199'
@@ -23,9 +24,6 @@ def init_ssh():
     global SSH
     if not SSH:
         SSH = connect.ConnSSH(HOST, PORT, USER, PASSWORD, TIMEOUT)
-    else:
-        pass
-
 
 class DebugLog(object):
     def __init__(self):
@@ -58,14 +56,7 @@ class VplxDrbd(object):
 
     def __init__(self):
         self.logger = consts.glo_log()
-        self.STR = consts.glo_str()
-        self.ID = consts.glo_id()
         self.rpl = consts.glo_rpl()
-        self.res_name = f'res_{self.STR}_{self.ID}'
-        global DRBD_DEV_NAME
-        DRBD_DEV_NAME = f'drbd{self.ID}'
-        global RPL
-        RPL = consts.glo_rpl()
         self._prepare()
         self.iscsi=s.Iscsi(SSH,NETAPP_IP)
 
@@ -73,17 +64,32 @@ class VplxDrbd(object):
         if self.rpl == 'no':
             init_ssh()
 
-    def prepare_config_file(self):
+    def drbd_cfg(self):
+        s.pwl('Start to configure DRBD resource', 2, '', 'start')
+        self.info()
+        self._prepare_config_file()  # 创建配置文件
+        self._drbd_init()
+        self._drbd_up()
+        self._drbd_primary()
+        self._drbd_status_verify()  # 验证有没有启动（UptoDate）
+
+    def info(self):
+        self.STR = consts.glo_str()
+        self.ID = consts.glo_id()
+        self.res_name = f'res_{self.STR}_{self.ID}'
+        global DRBD_DEV_NAME
+        DRBD_DEV_NAME = f'drbd{self.ID}'
+
+    #需要讨论
+    def _prepare_config_file(self):
         '''
         Prepare DRDB resource config file
         '''
-        self.iscsi.create_session()
-        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 2)
-        blk_dev_name = s.get_disk_dev(SSH,'NETAPP')
-        s.pwl(f'Start to prepare DRBD config file "{self.res_name}.res"', 2, '', 'start')
-        # self.logger.write_to_log('T', 'INFO', 'info', 'start', '',
-        #                          f'Start prepare config file for resource {self.res_name}')
+        blk_dev_name = self._get_disk_from_netapp()
+        self._generate_config_file(blk_dev_name)
 
+    def _generate_config_file(self, blk_dev_name):
+        s.pwl(f'Start to prepare DRBD config file "{self.res_name}.res"', 3, '', 'start')
         context = [rf'resource {self.res_name} {{',
                    rf'\ \ \ \ on maxluntarget {{',
                    rf'\ \ \ \ \ \ \ \ device /dev/{DRBD_DEV_NAME}\;',
@@ -111,9 +117,15 @@ class VplxDrbd(object):
             if echo_result['sts']:
                 continue
             else:
-                s.pwce('Failed to prepare DRBD config file..', 3, 2)
+                s.pwce('Failed to prepare DRBD config file..', 4, 2)
 
-        s.pwl(f'Succeed in creating DRBD config file "{self.res_name}.res"', 3, '', 'finish')
+        s.pwl(f'Succeed in creating DRBD config file "{self.res_name}.res"', 4, '', 'finish')
+
+    def _get_disk_from_netapp(self):
+        self.iscsi.create_session()
+        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
+        blk_dev_name = s.get_disk_dev(SSH, 'NETAPP')
+        return blk_dev_name
 
     def _drbd_init(self):
         '''
@@ -173,14 +185,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def drbd_cfg(self):
-        s.pwl('Start to configure DRBD resource', 2, '', 'start')
-        if self._drbd_init():
-            if self._drbd_up():
-                if self._drbd_primary():
-                    return True
-
-    def drbd_status_verify(self):
+    def _drbd_status_verify(self):
         '''
         Check DRBD resource status and confirm the status is UpToDate
         '''
@@ -232,7 +237,6 @@ class VplxDrbd(object):
             return True
         else:
             s.pwce('Failed to remove DRBD config file', 4, 2)
-  
 
     def get_all_cfgd_drbd(self):
         # get list of all configured crm res
@@ -248,7 +252,6 @@ class VplxDrbd(object):
                 s.pwe(f'Failed to execute command "{cmd_drbd_status}"', 3, 2)
         else:
             s.handle_exception()
-
 
     def _drbd_del(self, res_name):
         s.pwl(f'Deleting DRBD resource {res_name}',1)
@@ -381,13 +384,15 @@ class VplxCrm(object):
         else:
             s.pwce(f'Failed to start up iSCSILogicaLUnit "{self.lu_name}"', 4, 2)
 
+
     def crm_cfg(self):
         s.pwl('Start to configure crm resource', 2, '', 'start')
-        if self._crm_create():
-            if self._crm_setting():
-                if self._crm_start():
-                    time.sleep(0.5)
-                    return True
+        self._crm_create()
+        self._crm_setting()
+        self._crm_start()
+        time.sleep(0.5)
+        self.crm_status_verify()
+        return True
 
 
     def _get_crm_status(self, res_name):

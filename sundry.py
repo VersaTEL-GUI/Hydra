@@ -11,6 +11,8 @@ import socket
 from random import shuffle
 import debug_log
 
+TARGET_IQN='iqn.2020-06.com.example:test-max-lun'
+
 
 def host_random_iqn(random_num):
     iqn_list = consts.glo_iqn_list()
@@ -164,7 +166,7 @@ class Iscsi(object):
         else:
             handle_exception()
 
-    def _restart_service(self):
+    def restart_service(self):
         cmd=f'systemctl restart iscsid open-iscsi'
         oprt_id=get_oprt_id()
         results=get_ssh_cmd(self.SSH,'Uksjdkqi',cmd,oprt_id)
@@ -177,7 +179,8 @@ class Iscsi(object):
         else:
             handle_exception()
 
-    def _modify_host_iqn(self,iqn):
+    def modify_host_iqn(self,iqn):
+        self.disconnect_session(TARGET_IQN)
         cmd=f'echo "InitiatorName={iqn}" > /etc/iscsi/initiatorname.iscsi'
         oprt_id=get_oprt_id()
         results=get_ssh_cmd(self.SSH,'RTDAJDas',cmd,oprt_id)
@@ -189,11 +192,7 @@ class Iscsi(object):
                 pwe(f'Failed to  modify initiator IQN "{iqn}"',2,2)
         else:
             handle_exception()
-    
-    def change_host_iqn(self,iqn):
-        if self._modify_host_iqn(iqn):
-            if self._restart_service():
-                return True
+
 
 #
 # def dp(str, arg):

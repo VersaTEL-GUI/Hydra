@@ -13,6 +13,7 @@ def _init():
     _GLOBAL_DICT['LOG_SWITCH'] = 'yes'
     _GLOBAL_DICT['IQN_LIST'] = []
 
+
 def set_value(key, value):
     """ 定义一个全局变量 """
     _GLOBAL_DICT[key] = value
