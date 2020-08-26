@@ -147,7 +147,7 @@ class HydraArgParse():
 
         if args.type1 == 'lun':
             ctrl.log_user_input(args)
-            #ctrl.run_maxlun(args)
+            #ctrl.run_lun(args)
 
         elif args.type1 == 'iqn':
             if args.type2 == 'otm':
@@ -156,13 +156,10 @@ class HydraArgParse():
 
             elif args.type2 == 'mtm':
                 ctrl.log_user_input(args)
-                ctrl.capacity = args.capacity
-                if args.random_number:
-                    ctrl.random_num = args.random_number
-                #ctrl.run_mxh()
+                #ctrl.run_mxh(args)
 
         elif args.type1 == 'del':
-            pass
+            ctrl.log_user_input(args)
             #ctrl.delete_resource()
 
         elif args.type1 == 're':
@@ -170,7 +167,7 @@ class HydraArgParse():
             consts.set_glo_log_switch('no')
             logdb.prepare_db()
             ctrl.prepare_replay(args)
-            ctrl.run_maxlun()
+            ctrl.run_lun()
 
         else:
             self.parser.print_help()

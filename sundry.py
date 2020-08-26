@@ -149,6 +149,7 @@ class Iscsi(object):
 
         else:
             handle_exception()
+
     # -m:string 和 oprt id 不用传递过来,在内部定义即可
     def _find_session(self):
         '''

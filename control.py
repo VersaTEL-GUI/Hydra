@@ -20,9 +20,6 @@ class HydraControl():
         self.logger = log.Log(self.transaction_id)
         consts.set_glo_log(self.logger)
 
-        self.capacity = None
-        self.random_num=3
-
     def instantiation_class(self):
         # Initialize connection
         self._netapp = storage.Storage()
@@ -30,44 +27,13 @@ class HydraControl():
         self._crm = vplx.VplxCrm()
         self._host = h.HostTest()
 
-    def _storage(self):
-        '''
-        Connect to NetApp Storage, Create LUN and Map to VersaPLX
-        '''
-        netapp = storage.Storage()
-        netapp.lun_create()
-        netapp.lun_map()
-
-    def _vplx_drbd(self):
-        '''
-        Connect to VersaPLX, Config DRDB resource
-        '''
-        # drbd.discover_new_lun() # 查询新的lun有没有map过来，返回path
-        drbd = vplx.VplxDrbd()
-        drbd.prepare_config_file()  # 创建配置文件
-        drbd.drbd_cfg()  # run
-        drbd.drbd_status_verify()  # 验证有没有启动（UptoDate）
-
-    def _vplx_crm(self):
-        '''
-        Connect to VersaPLX, Config iSCSI Target
-        '''
-        crm = vplx.VplxCrm()
-        crm.crm_cfg()
-        crm.crm_status_verify()
-
     def delete_resource(self):
         '''
         User determines whether to delete and execute delete method
         '''
-        crm = vplx.VplxCrm()
-        drbd = vplx.VplxDrbd()
-        stor = storage.Storage()
-        host = host_initiator.HostTest()
-
-        crm_to_del_list = s.get_to_del_list(crm.get_all_cfgd_res())
-        drbd_to_del_list = s.get_to_del_list(drbd.get_all_cfgd_drbd())
-        lun_to_del_list = s.get_to_del_list(stor.get_all_cfgd_lun())
+        crm_to_del_list = s.get_to_del_list(self._crm.get_all_cfgd_res())
+        drbd_to_del_list = s.get_to_del_list(self._drbd.get_all_cfgd_drbd())
+        lun_to_del_list = s.get_to_del_list(self._netapp.get_all_cfgd_lun())
         if crm_to_del_list:
             s.prt_res_to_del('\nCRM resource', crm_to_del_list)
         if drbd_to_del_list:
@@ -77,13 +43,13 @@ class HydraControl():
         if crm_to_del_list or drbd_to_del_list or lun_to_del_list:
             answer = input('\n\nDo you want to delete these resource? (yes/y/no/n):')
             if answer.strip() == 'yes' or answer.strip() == 'y':
-                crm.del_crms(crm_to_del_list)
-                drbd.del_drbds(drbd_to_del_list)
-                stor.del_luns(lun_to_del_list)
+                self._crm.del_crms(crm_to_del_list)
+                self._drbd.del_drbds(drbd_to_del_list)
+                self._netapp.del_luns(lun_to_del_list)
                 s.pwl('Start to remove all deleted disk device on vplx and host', 0)
                 # remove all deleted disk device on vplx and host
-                crm.vplx_rescan_r()
-                host.host_rescan_r()
+                self._crm.vplx_rescan_r()
+                self._host.host_rescan_r()
                 print(f'{"":-^80}', '\n')
             else:
                 s.pwe('User canceled deleting proccess ...', 2, 2)
@@ -91,27 +57,30 @@ class HydraControl():
             print()
             s.pwe('No qualified resources to be delete.', 2, 2)
 
-    def run_mxh(self):
+    def run_mxh(self, args):
         self.instantiation_class()
 
-        id_list = consts.glo_id_list()
+        # wirte consts id_range and uiq_str
+        id_list = s.change_id_range_to_list(args.id_range)
+        consts.set_glo_id_list(id_list)
         consts.set_glo_str('maxhost')
 
         for id in id_list:
             consts.set_glo_iqn_list([])
+
             consts.set_glo_id(id)
-            s.generate_iqn_list(self.capacity)
-            self._storage()
-            self._vplx_drbd()
-            self._vplx_crm()
-            host = host_initiator.HostTest()
-            for iqn in s.host_random_iqn(self.random_num):
-                host.modify_host_iqn(iqn)
-                host.iscsi.login()
-                host.start_test()
+            s.generate_iqn_list(args.capacity)
+
+            self._netapp.lun_create_map()
+            self._drbd.drbd_cfg()
+            self._crm.crm_cfg()
+
+            for iqn in s.host_random_iqn(args.random_number):
+                self._host.modify_host_iqn(iqn)
+                self._host.io_test()
 
     @s.record_exception
-    def run_maxlun(self, args):
+    def run_lun(self, args):
         self.instantiation_class()
 
         # wirte consts id_range and uiq_str
@@ -121,12 +90,11 @@ class HydraControl():
 
         iqn = s.generate_iqn('0')
         consts.append_glo_iqn_list(iqn)
+
         rpl = consts.glo_rpl()
 
         format_width = 105 if rpl == 'yes' else 80
-
         self._host.modify_host_iqn(iqn)
-
         for lun_id in consts.glo_id_list():
             consts.set_glo_id(lun_id)
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
@@ -146,6 +114,7 @@ class HydraControl():
     def run_iqn_otm(self):
         num = 0
         consts.set_glo_str('maxhost')
+
         self._netapp.lun_create_map()
         self._drbd.drbd_cfg()
 
