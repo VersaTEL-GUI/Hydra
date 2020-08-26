@@ -168,6 +168,7 @@ class HostTest(object):
             s.pwce(f'Failed to format device "{dev_name}"', 3, 2)
 
     def io_test(self):
+        s.pwl('Start to format，write and read the LUN on Host', 0, s.get_oprt_id(), 'start')
         self._mount_disk()
         self._get_test_perf()
 

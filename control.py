@@ -131,20 +131,18 @@ class HydraControl():
             consts.set_glo_id(lun_id)
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
-                s.pwl('Start to configure LUN on NetApp Storage', 0, s.get_oprt_id(), 'start')
                 self._netapp.lun_create_map()
                 time.sleep(1.5)
-                s.pwl('Start to configure DRDB resource and CRM resource on VersaPLX', 0, s.get_oprt_id(), 'start')
                 self._drbd.drbd_cfg()
                 self._crm.crm_cfg()
                 time.sleep(1.5)
-                s.pwl('Start to format，write and read the LUN on Host', 0, s.get_oprt_id(), 'start')
                 print(f'{"":-^{format_width}}', '\n')
                 time.sleep(1.5)
                 self._host.io_test()
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
 
+    #架构上继续改进
     def run_iqn_otm(self):
         num = 0
         consts.set_glo_str('maxhost')
@@ -154,18 +152,17 @@ class HydraControl():
         while True:
             s.prt(f'The current IQN number of max supported hosts test is {num}')
             iqn = s.generate_iqn(num)
-            num += 1
             consts.append_glo_iqn_list(iqn)
-            iqn_list = consts.glo_iqn_list()
-            if len(iqn_list) == 1:
+
+            if num == 0:
                 self._crm.crm_cfg()
-            elif len(iqn_list) > 1:
+            elif num > 1:
                 self._drbd.drbd_status_verify()
                 self._crm.modify_initiator_and_verify()
 
-            host.modify_host_iqn(iqn)
-            host.iscsi.login()
-            host.start_test()
+            self._host.modify_host_iqn(iqn)
+            self._host.io_test()
+            num += 1
 
     #将命令写入log，此处需要将命令转化为字典
     #原格式：cmd = [main.py mxh -id 1 3 -c 5 -n 2]
@@ -178,7 +175,7 @@ class HydraControl():
     #
     # }]
     def log_user_input(self, args):
-        if args.subcommand == 're':
+        if args.type1 == 're':
             return
         if sys.argv:
             cmd = vars(args)

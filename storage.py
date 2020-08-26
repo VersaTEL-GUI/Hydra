@@ -45,14 +45,17 @@ class Storage:
             init_telnet()
 
     def lun_create_map(self):
-        self.info()
+        s.pwl('Start to configure LUN on NetApp Storage', 0, s.get_oprt_id(), 'start')
+        self._info()
         self._lun_create()
         self._lun_map()
 
-    def info(self):
+    def _info(self):
         self.ID = consts.glo_id()
         self.STR = consts.glo_str()
         self.lun_name = f'{self.STR}_{self.ID}'
+
+
 
     def _lun_create(self):
         '''

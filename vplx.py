@@ -65,6 +65,7 @@ class VplxDrbd(object):
             init_ssh()
 
     def drbd_cfg(self):
+        s.pwl('Start to configure DRDB resource and CRM resource on VersaPLX', 0, s.get_oprt_id(), 'start')
         s.pwl('Start to configure DRBD resource', 2, '', 'start')
         self.info()
         self._prepare_config_file()  # 创建配置文件
@@ -273,7 +274,7 @@ class VplxCrm(object):
             init_ssh()
 
     def crm_cfg(self):
-        self.info()
+        self._info()
         s.pwl('Start to configure crm resource', 2, '', 'start')
         self._crm_create()
         self._crm_setting()
@@ -283,11 +284,11 @@ class VplxCrm(object):
         return True
 
     def modify_initiator_and_verify(self):
-        self.info()
+        self._info()
         self.modify_allow_initiator()
         self.crm_and_targetcli_verify()
 
-    def info(self):
+    def _info(self):
         self.ID = consts.glo_id()
         self.STR = consts.glo_str()
         self.lu_name = f'res_{self.STR}_{self.ID}'

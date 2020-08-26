@@ -33,7 +33,7 @@ class HydraArgParse():
             action='store',
             help='version mode'
         )
-        sub_parser = self.parser.add_subparsers(dest='subcommand')
+        sub_parser = self.parser.add_subparsers(dest='type1')
         #replay  or re
         parser_replay = sub_parser.add_parser(
             're',
@@ -84,7 +84,7 @@ class HydraArgParse():
             'iqn',
             help = 'Do the max supported Hosts test with one LUN or N LUNs'
         )
-        parser_iqn_sub = parser_iqn.add_subparsers(dest='iqn_sub')
+        parser_iqn_sub = parser_iqn.add_subparsers(dest='type2')
         #iqn otm
         parser_iqn_otm = parser_iqn_sub.add_parser(
             'otm',
@@ -145,27 +145,27 @@ class HydraArgParse():
         ctrl = c.HydraControl()
         args = self.parser.parse_args()
 
-        if args.subcommand == 'lun':
+        if args.type1 == 'lun':
             ctrl.log_user_input(args)
-            ctrl.run_maxlun(args)
+            #ctrl.run_maxlun(args)
 
-        elif args.subcommand == 'iqn':
-            if args.iqn_sub == 'otm':
+        elif args.type1 == 'iqn':
+            if args.type2 == 'otm':
                 ctrl.log_user_input(args)
-                ctrl.run_iqn_otm()
+                #ctrl.run_iqn_otm()
 
-            elif args.iqn_sub == 'mtm':
+            elif args.type2 == 'mtm':
                 ctrl.log_user_input(args)
                 ctrl.capacity = args.capacity
                 if args.random_number:
                     ctrl.random_num = args.random_number
                 #ctrl.run_mxh()
 
-        elif args.subcommand == 'del':
+        elif args.type1 == 'del':
             pass
             #ctrl.delete_resource()
 
-        elif args.subcommand == 're':
+        elif args.type1 == 're':
             consts.set_glo_rpl('yes')
             consts.set_glo_log_switch('no')
             logdb.prepare_db()
