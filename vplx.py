@@ -53,7 +53,6 @@ class VplxDrbd(object):
     '''
     Integrate LUN in DRBD resources
     '''
-
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()

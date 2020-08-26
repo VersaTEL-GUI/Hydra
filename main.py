@@ -1,9 +1,6 @@
 #  coding: utf-8
 
-import consts
 import argparse
-import sundry as s
-import logdb
 import debug_log
 import control as c
 
@@ -16,6 +13,7 @@ class HydraArgParse():
     def __init__(self):
         # -m:可能在某个地方我们要打印出来这个ID,哦,collect debug log时候就需要这个.但是这个id是什么时候更新的??理一下
         self.argparse_init()
+        self.start()
 
     def argparse_init(self):
         self.parser = argparse.ArgumentParser(prog='Hydra',
@@ -34,7 +32,7 @@ class HydraArgParse():
             help='version mode'
         )
         sub_parser = self.parser.add_subparsers(dest='type1')
-        #replay  or re
+        #replay or re
         parser_replay = sub_parser.add_parser(
             're',
             #aliases=['replay'],
@@ -140,38 +138,31 @@ class HydraArgParse():
             help="The unique string for this test, affects related naming"
         )
 
-
     def start(self):
         ctrl = c.HydraControl()
         args = self.parser.parse_args()
-
         if args.type1 == 'lun':
             ctrl.log_user_input(args)
             #ctrl.run_lun(args)
-
         elif args.type1 == 'iqn':
             if args.type2 == 'otm':
                 ctrl.log_user_input(args)
                 #ctrl.run_iqn_otm()
-
             elif args.type2 == 'mtm':
                 ctrl.log_user_input(args)
-                #ctrl.run_mxh(args)
-
+                #ctrl.run_iqn_mtm(args)
         elif args.type1 == 'del':
             ctrl.log_user_input(args)
-            #ctrl.delete_resource()
-
+            ctrl.delete_resource(args)
         elif args.type1 == 're':
-            consts.set_glo_rpl('yes')
-            consts.set_glo_log_switch('no')
-            logdb.prepare_db()
-            ctrl.prepare_replay(args)
-            ctrl.run_lun()
-
+            if args.tid:
+                ctrl.run_re_tid(args)
+            elif args.data:
+                ctrl.run_re_date(args)
+            else:
+                ctrl.run_re(args)
         else:
             self.parser.print_help()
-
         # if args.test:
         #     debug_log.collect_debug_log()
         #     return
@@ -179,5 +170,4 @@ class HydraArgParse():
 
 if __name__ == '__main__':
     obj = HydraArgParse()
-    obj.start()
 
