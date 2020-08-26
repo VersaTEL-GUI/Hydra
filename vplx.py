@@ -71,7 +71,7 @@ class VplxDrbd(object):
         self._drbd_init()
         self._drbd_up()
         self._drbd_primary()
-        self._drbd_status_verify()  # 验证有没有启动（UptoDate）
+        self.drbd_status_verify()  # 验证有没有启动（UptoDate）
 
     def info(self):
         self.STR = consts.glo_str()
@@ -80,13 +80,18 @@ class VplxDrbd(object):
         global DRBD_DEV_NAME
         DRBD_DEV_NAME = f'drbd{self.ID}'
 
-    #需要讨论
     def _prepare_config_file(self):
         '''
         Prepare DRDB resource config file
         '''
         blk_dev_name = self._get_disk_from_netapp()
         self._generate_config_file(blk_dev_name)
+
+    def _get_disk_from_netapp(self):
+        self.iscsi.create_session()
+        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
+        blk_dev_name = s.get_disk_dev(SSH, 'NETAPP')
+        return blk_dev_name
 
     def _generate_config_file(self, blk_dev_name):
         s.pwl(f'Start to prepare DRBD config file "{self.res_name}.res"', 3, '', 'start')
@@ -120,12 +125,6 @@ class VplxDrbd(object):
                 s.pwce('Failed to prepare DRBD config file..', 4, 2)
 
         s.pwl(f'Succeed in creating DRBD config file "{self.res_name}.res"', 4, '', 'finish')
-
-    def _get_disk_from_netapp(self):
-        self.iscsi.create_session()
-        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
-        blk_dev_name = s.get_disk_dev(SSH, 'NETAPP')
-        return blk_dev_name
 
     def _drbd_init(self):
         '''
@@ -185,7 +184,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def _drbd_status_verify(self):
+    def drbd_status_verify(self):
         '''
         Check DRBD resource status and confirm the status is UpToDate
         '''
@@ -269,12 +268,29 @@ class VplxDrbd(object):
 class VplxCrm(object):
     def __init__(self):
         self.logger = consts.glo_log()
-        self.ID = consts.glo_id()
-        self.STR = consts.glo_str()
         self.rpl = consts.glo_rpl()
-        self.lu_name = f'res_{self.STR}_{self.ID}'
         if self.rpl == 'no':
             init_ssh()
+
+    def crm_cfg(self):
+        self.info()
+        s.pwl('Start to configure crm resource', 2, '', 'start')
+        self._crm_create()
+        self._crm_setting()
+        self._crm_start()
+        time.sleep(0.5)
+        self.crm_status_verify()
+        return True
+
+    def modify_initiator_and_verify(self):
+        self.info()
+        self.modify_allow_initiator()
+        self.crm_and_targetcli_verify()
+
+    def info(self):
+        self.ID = consts.glo_id()
+        self.STR = consts.glo_str()
+        self.lu_name = f'res_{self.STR}_{self.ID}'
 
     def _crm_create(self):
         '''
@@ -352,7 +368,6 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-
     def _crm_setting(self):
         if self._setting_col():
             if self._setting_order():
@@ -384,17 +399,6 @@ class VplxCrm(object):
         else:
             s.pwce(f'Failed to start up iSCSILogicaLUnit "{self.lu_name}"', 4, 2)
 
-
-    def crm_cfg(self):
-        s.pwl('Start to configure crm resource', 2, '', 'start')
-        self._crm_create()
-        self._crm_setting()
-        self._crm_start()
-        time.sleep(0.5)
-        self.crm_status_verify()
-        return True
-
-
     def _get_crm_status(self, res_name):
         '''
         Check the crm resource status
@@ -415,7 +419,6 @@ class VplxCrm(object):
                 s.pwce('Failed to show crm',4,2)
         else:
             s.handle_exception()
-            
 
     def _cyclic_check_crm_status(self, res_name, expect_status,sec, num):
         '''
@@ -428,7 +431,6 @@ class VplxCrm(object):
                 time.sleep(sec)
             else:
                 return True
-    
 
     def _crm_stop(self, res_name):
         '''
@@ -449,7 +451,6 @@ class VplxCrm(object):
                 s.pwce('Failed to stop CRM resource', 3, 2)
         else:
             s.handle_exception()
-
 
     def _crm_del_cof(self, res_name):
         '''
@@ -478,7 +479,6 @@ class VplxCrm(object):
             if self._crm_del_cof(res_name):
                 return True
 
-
     def get_all_cfgd_res(self):
         # get list of all configured crm res
         cmd_crm_res_show = 'crm res show'
@@ -489,8 +489,6 @@ class VplxCrm(object):
             show_result = show_result['rst'].decode('utf-8')
             crm_res_cfgd_list = s.re_findall(re_crm_res, show_result)
             return crm_res_cfgd_list
-
-
 
     def del_crms(self, crm_to_del_list):
         if crm_to_del_list:
@@ -503,7 +501,6 @@ class VplxCrm(object):
         vplx rescan after delete
         '''
         s.scsi_rescan(SSH, 'r')
-
     
     def modify_allow_initiator(self):
         iqn_string=' '.join(consts.glo_iqn_list())

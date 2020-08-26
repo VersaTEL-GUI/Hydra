@@ -92,6 +92,8 @@ class HydraControl():
             s.pwe('No qualified resources to be delete.', 2, 2)
 
     def run_mxh(self):
+        self.instantiation_class()
+
         id_list = consts.glo_id_list()
         consts.set_glo_str('maxhost')
 
@@ -123,8 +125,7 @@ class HydraControl():
 
         format_width = 105 if rpl == 'yes' else 80
 
-        if rpl == 'no':
-            self._host.modify_host_iqn(iqn)
+        self._host.modify_host_iqn(iqn)
 
         for lun_id in consts.glo_id_list():
             consts.set_glo_id(lun_id)
@@ -144,14 +145,12 @@ class HydraControl():
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
 
-    def run_maxhost(self):
+    def run_iqn_otm(self):
         num = 0
         consts.set_glo_str('maxhost')
-        self._storage()
-        self._vplx_drbd()
-        crm = vplx.VplxCrm()
-        drbd = vplx.VplxDrbd()
-        host = host_initiator.HostTest()
+        self._netapp.lun_create_map()
+        self._drbd.drbd_cfg()
+
         while True:
             s.prt(f'The current IQN number of max supported hosts test is {num}')
             iqn = s.generate_iqn(num)
@@ -159,12 +158,11 @@ class HydraControl():
             consts.append_glo_iqn_list(iqn)
             iqn_list = consts.glo_iqn_list()
             if len(iqn_list) == 1:
-                crm.crm_cfg()
-                crm.crm_status_verify()
+                self._crm.crm_cfg()
             elif len(iqn_list) > 1:
-                drbd.drbd_status_verify()
-                crm.modify_allow_initiator()
-                crm.crm_and_targetcli_verify()
+                self._drbd.drbd_status_verify()
+                self._crm.modify_initiator_and_verify()
+
             host.modify_host_iqn(iqn)
             host.iscsi.login()
             host.start_test()

@@ -1,5 +1,7 @@
 # coding:utf-8
 
+VERSION = 'v0.0.0'
+
 class ReplayExit(Exception):
     "replay时，输出日志中的异常信息后，此次replay事务也随之停止"
     pass

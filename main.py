@@ -30,7 +30,7 @@ class HydraArgParse():
             '-v',
             '--version',
             dest='version',
-            action='store_true',
+            action='store',
             help='version mode'
         )
         sub_parser = self.parser.add_subparsers(dest='subcommand')
@@ -149,30 +149,29 @@ class HydraArgParse():
             ctrl.log_user_input(args)
             ctrl.run_maxlun(args)
 
-        elif args.subcommand == 'mh':
-            ctrl.log_user_input(args)
-            ctrl.run_maxhost()
+        elif args.subcommand == 'iqn':
+            if args.iqn_sub == 'otm':
+                ctrl.log_user_input(args)
+                ctrl.run_iqn_otm()
 
-        elif args.subcommand == 'mxh':
-            ctrl.capacity = args.capacity
-            if args.random_number:
-                ctrl.random_num = args.random_number
-            ctrl.run_mxh()
+            elif args.iqn_sub == 'mtm':
+                ctrl.log_user_input(args)
+                ctrl.capacity = args.capacity
+                if args.random_number:
+                    ctrl.random_num = args.random_number
+                #ctrl.run_mxh()
 
         elif args.subcommand == 'del':
             pass
             #ctrl.delete_resource()
 
-        elif args.subcommand in ['re', 'replay']:
+        elif args.subcommand == 're':
             consts.set_glo_rpl('yes')
             consts.set_glo_log_switch('no')
             logdb.prepare_db()
             ctrl.prepare_replay(args)
-
             ctrl.run_maxlun()
 
-        elif args.version:
-            pass
         else:
             self.parser.print_help()
 

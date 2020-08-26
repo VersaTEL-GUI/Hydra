@@ -59,7 +59,6 @@ class Storage:
         Create LUN with 10M bytes in size
         '''
         oprt_id = s.get_oprt_id()
-        lun_name = f'{consts.glo_id()}_{consts.glo_str()}'
         unique_str = 'jMPFwXy2'
         cmd = f'lun create -s 10m -t linux /vol/esxi/{self.lun_name}'
         info_msg = f'Start to create LUN, LUN name: "{self.lun_name}",LUN ID: "{self.ID}"'

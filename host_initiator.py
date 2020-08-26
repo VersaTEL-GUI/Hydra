@@ -62,7 +62,6 @@ class HostTest(object):
             if self.iscsi.restart_service():
                 return True
 
-    
     def _prepare(self):
         if self.rpl == 'no':
             init_ssh()
