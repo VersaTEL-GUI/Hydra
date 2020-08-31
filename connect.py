@@ -11,7 +11,6 @@ class ConnSSH(object):
     '''
     ssh connect to VersaPLX
     '''
-
     def __init__(self, host, port, username, password, timeout):
         self.logger = consts.glo_log()
         self.logger.d1 = host
@@ -22,7 +21,7 @@ class ConnSSH(object):
         self._password = password
         self._sftp = None
         self.SSHConnection = None
-        self.ssh_connect()
+        self._make_connect()
 
     def _connect(self):
         oprt_id = s.get_oprt_id()
@@ -58,7 +57,7 @@ class ConnSSH(object):
             output = {'sts': 1, 'rst': data}
             return output
 
-    def ssh_connect(self):
+    def _make_connect(self):
         self._connect()
         if not self.SSHConnection:
             s.pwl(f'Retry to connect {self._host} via SSH',2,'','start')
@@ -71,7 +70,6 @@ class ConnSSH(object):
             if self._sftp is None:
                 self._sftp = self.SSHConnection.open_sftp()
             self._sftp.get(remotepath, localpath)
-
         try:
             _download()
         except AttributeError as e:
@@ -82,7 +80,6 @@ class ConnSSH(object):
             if self._sftp is None:
                 self._sftp = self.SSHConnection.open_sftp()
             self._sftp.put(localpath, remotepath)
-
         try:
             _upload()
         except AttributeError as e:
@@ -107,7 +104,7 @@ class ConnTelnet(object):
         self._password = password
         self._timeout = timeout
         self.telnet = telnetlib.Telnet()
-        self.telnet_connect()
+        self._make_connect()
 
     def _connect(self):
         try:
@@ -140,7 +137,7 @@ class ConnTelnet(object):
         self.telnet.write(b'\r')
         return rely
 
-    def telnet_connect(self):
+    def _make_connect(self):
         self._connect()
         if not self.telnet:
             s.pwl('Retry to connect {self._host} via Telnet',2,'','start')

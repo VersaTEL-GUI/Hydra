@@ -49,7 +49,6 @@ class HostTest(object):
     '''
     Format, write, and read iSCSI LUN
     '''
-
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()
@@ -57,7 +56,7 @@ class HostTest(object):
         self.iscsi=s.Iscsi(SSH,VPLX_IP)
     
       
-    def modify_host_iqn(self,initiator_iqn):
+    def modify_host_iqn(self, initiator_iqn):
         if self.iscsi.modify_host_iqn(initiator_iqn):
             if self.iscsi.restart_service():
                 return True
@@ -103,9 +102,7 @@ class HostTest(object):
         '''
         cmd = f'mkfs.ext4 {dev_name} -F'
         oprt_id = s.get_oprt_id()
-
         s.pwl(f'Start to format "{dev_name}"', 2, oprt_id, 'start')
-
         result_format = s.get_ssh_cmd(SSH, '7afztNL6', cmd, oprt_id)
         if result_format:
             if result_format['sts']:
@@ -119,7 +116,7 @@ class HostTest(object):
         else:
             s.handle_exception()
 
-    def _get_dd_perf(self, cmd_dd, unique_str):
+    def _get_test_perf(self, cmd_dd, unique_str):
         '''
         Use regular to get the speed of test
         '''
@@ -138,27 +135,19 @@ class HostTest(object):
         else:
             s.pwce('Can not get test result', 3, 2)
 
-    def _get_test_perf(self):
-        '''
-        Calling method to read&write test
-        '''
-        s.pwl(f'Start speed test', 2, '', 'start')
+    def _write_test(self):
         cmd_dd_write = f'dd if=/dev/zero of={MOUNT_POINT}/t.dat bs=512k count=16'
-        cmd_dd_read = f'dd if={MOUNT_POINT}/t.dat of=/dev/zero bs=512k count=16'
-        write_perf = self._get_dd_perf(cmd_dd_write, unique_str='CwS9LYk0')
+        write_perf = self._get_test_perf(cmd_dd_write, unique_str='CwS9LYk0')
         s.pwl(f'Write Speed: {write_perf}', 3, '', 'finish')
-        time.sleep(0.25)
-        read_perf = self._get_dd_perf(cmd_dd_read, unique_str='hsjG0miU')
-        s.pwl(f'Read  Speed: {read_perf}', 3, '', 'finish')
 
-    def _get_disk_from_vplx(self):
-        self.iscsi.create_session()
-        dev_name = s.get_disk_dev(SSH,'LIO-ORG')
-        return dev_name
+    def _read_test(self):
+        cmd_dd_read = f'dd if={MOUNT_POINT}/t.dat of=/dev/zero bs=512k count=16'
+        read_perf = self._get_test_perf(cmd_dd_read, unique_str='hsjG0miU')
+        s.pwl(f'Read  Speed: {read_perf}', 3, '', 'finish')
 
     def _mount_disk(self):
         s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 2)
-        dev_name = self._get_disk_from_vplx()
+        dev_name = s.GetNewDisk.get_disk_from_vplx(SSH )
         if self._format(dev_name):
             if self._mount(dev_name):
                 return True
@@ -170,7 +159,10 @@ class HostTest(object):
     def io_test(self):
         s.pwl('Start to format，write and read the LUN on Host', 0, s.get_oprt_id(), 'start')
         self._mount_disk()
-        self._get_test_perf()
+        s.pwl(f'Start speed test', 2, '', 'start')
+        self._write_test()
+        self._read_test()
+
 
     def host_rescan_r(self):
         '''

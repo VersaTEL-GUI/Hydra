@@ -56,6 +56,8 @@ class VplxDrbd(object):
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()
+        self.id = None
+        self.str = None
         self._prepare()
         self.iscsi=s.Iscsi(SSH,NETAPP_IP)
 
@@ -63,37 +65,26 @@ class VplxDrbd(object):
         if self.rpl == 'no':
             init_ssh()
 
-    def drbd_cfg(self):
+    def cfg(self):
         s.pwl('Start to configure DRDB resource and CRM resource on VersaPLX', 0, s.get_oprt_id(), 'start')
         s.pwl('Start to configure DRBD resource', 2, '', 'start')
-        self.info()
-        self._prepare_config_file()  # 创建配置文件
-        self._drbd_init()
-        self._drbd_up()
-        self._drbd_primary()
-        self.drbd_status_verify()  # 验证有没有启动（UptoDate）
-
-    def info(self):
-        self.STR = consts.glo_str()
-        self.ID = consts.glo_id()
-        self.res_name = f'res_{self.STR}_{self.ID}'
+        self.res_name = f'res_{self.str}_{self.id}'
         global DRBD_DEV_NAME
-        DRBD_DEV_NAME = f'drbd{self.ID}'
+        DRBD_DEV_NAME = f'drbd{self.id}'
+        self._add_config_file()  # 创建配置文件
+        self._init()
+        self._up()
+        self._primary()
+        self.status_verify()  # 验证有没有启动（UptoDate）
 
-    def _prepare_config_file(self):
+    def _add_config_file(self):
         '''
         Prepare DRDB resource config file
         '''
-        blk_dev_name = self._get_disk_from_netapp()
-        self._generate_config_file(blk_dev_name)
+        blk_dev_name = s.GetNewDisk.get_disk_from_netapp(SSH)
+        self._create_config_file(blk_dev_name)
 
-    def _get_disk_from_netapp(self):
-        self.iscsi.create_session()
-        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
-        blk_dev_name = s.get_disk_dev(SSH, 'NETAPP')
-        return blk_dev_name
-
-    def _generate_config_file(self, blk_dev_name):
+    def _create_config_file(self, blk_dev_name):
         s.pwl(f'Start to prepare DRBD config file "{self.res_name}.res"', 3, '', 'start')
         context = [rf'resource {self.res_name} {{',
                    rf'\ \ \ \ on maxluntarget {{',
@@ -126,7 +117,7 @@ class VplxDrbd(object):
 
         s.pwl(f'Succeed in creating DRBD config file "{self.res_name}.res"', 4, '', 'finish')
 
-    def _drbd_init(self):
+    def _init(self):
         '''
         Initialize DRBD resource
         '''
@@ -148,7 +139,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def _drbd_up(self):
+    def _up(self):
         '''
         Start DRBD resource
         '''
@@ -166,7 +157,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def _drbd_primary(self):
+    def _primary(self):
         '''
         Complete initial synchronization of resources
         '''
@@ -184,7 +175,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def drbd_status_verify(self):
+    def status_verify(self):
         '''
         Check DRBD resource status and confirm the status is UpToDate
         '''
@@ -209,7 +200,7 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def _drbd_down(self, res_name):
+    def _down(self, res_name):
         '''
         Stop the DRBD resource
         '''
@@ -223,7 +214,7 @@ class VplxDrbd(object):
         else:
             s.pwce(f'Failed to stop DRBD "{res_name}"', 4, 2)
 
-    def _drbd_del_config(self, res_name):
+    def _del_config(self, res_name):
         '''
         remove the DRBD config file
         '''
@@ -252,47 +243,45 @@ class VplxDrbd(object):
         else:
             s.handle_exception()
 
-    def _drbd_del(self, res_name):
+    def _del(self, res_name):
         s.pwl(f'Deleting DRBD resource {res_name}',1)
-        if self._drbd_down(res_name):
-            if self._drbd_del_config(res_name):
+        if self._down(res_name):
+            if self._del_config(res_name):
                 return True
 
     def del_drbds(self, drbd_to_del_list):
         if drbd_to_del_list:
             s.pwl('Start to delete DRBD resource',0)
             for res_name in drbd_to_del_list:
-                self._drbd_del(res_name)
+                self._del(res_name)
 
 
 class VplxCrm(object):
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()
+        self.id = None
+        self.str = None
         if self.rpl == 'no':
             init_ssh()
 
-    def crm_cfg(self):
-        self._info()
+    def cfg(self):
+        self.lu_name = f'res_{self.str}_{self.id}'
         s.pwl('Start to configure crm resource', 2, '', 'start')
-        self._crm_create()
-        self._crm_setting()
-        self._crm_start()
+        self._create()
+        self._setting()
+        self._start()
         time.sleep(0.5)
-        self.crm_status_verify()
+        self._status_verify()
         return True
 
     def modify_initiator_and_verify(self):
-        self._info()
-        self.modify_allow_initiator()
-        self.crm_and_targetcli_verify()
+        self.lu_name = f'res_{self.str}_{self.id}'
+        self._modify_allow_initiator()
+        self._crm_and_targetcli_verify()
 
-    def _info(self):
-        self.ID = consts.glo_id()
-        self.STR = consts.glo_str()
-        self.lu_name = f'res_{self.STR}_{self.ID}'
 
-    def _crm_create(self):
+    def _create(self):
         '''
         Create iSCSILogicalUnit resource
         '''
@@ -317,7 +306,7 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-    def _setting_col(self):
+    def _set_col(self):
         '''
         Setting up iSCSILogicalUnit resources of colocation
         '''
@@ -335,7 +324,7 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-    def _setting_order(self):
+    def _set_order(self):
         '''
         Setting up iSCSILogicalUnit resources of order
         '''
@@ -353,7 +342,7 @@ class VplxCrm(object):
         else:
             s.handle_exception()
     
-    def _setting_portblock(self):
+    def _set_portblock(self):
         oprt_id=s.get_oprt_id()
         unique_str='TgFqUiOkl'
         cmd=f'crm conf order or_{self.lu_name}_prtoff {self.lu_name} {PORTBLOCK_UNBLOCK_NAME}'
@@ -368,13 +357,13 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-    def _crm_setting(self):
-        if self._setting_col():
-            if self._setting_order():
-                if self._setting_portblock():
+    def _setting(self):
+        if self._set_col():
+            if self._set_order():
+                if self._set_portblock():
                     return True
 
-    def _crm_start(self):
+    def _start(self):
         '''
         start up the iSCSILogicalUnit resource
         '''
@@ -391,7 +380,7 @@ class VplxCrm(object):
         else:
             s.handle_exception()
     
-    def crm_status_verify(self):
+    def _status_verify(self):
         oprt_id = s.get_oprt_id()
         if self._cyclic_check_crm_status(self.lu_name,'Started',6,100):
             s.pwl(f'Succeed in starting up iSCSILogicaLUnit "{self.lu_name}"', 4, oprt_id, 'finish')
@@ -432,7 +421,7 @@ class VplxCrm(object):
             else:
                 return True
 
-    def _crm_stop(self, res_name):
+    def _stop(self, res_name):
         '''
         stop the iSCSILogicalUnit resource
         '''
@@ -452,7 +441,7 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-    def _crm_del_cof(self, res_name):
+    def _del_cof(self, res_name):
         '''
         Delete the iSCSILogicalUnit resource
         '''
@@ -473,10 +462,10 @@ class VplxCrm(object):
         else:
             s.handle_exception()
 
-    def _crm_del(self, res_name):
+    def _del(self, res_name):
         s.pwl(f'Deleting crm resource {res_name}',1)
-        if self._crm_stop(res_name):
-            if self._crm_del_cof(res_name):
+        if self._stop(res_name):
+            if self._del_cof(res_name):
                 return True
 
     def get_all_cfgd_res(self):
@@ -494,7 +483,7 @@ class VplxCrm(object):
         if crm_to_del_list:
             s.pwl('Start to delete CRM resource',0)
             for res_name in crm_to_del_list:
-                self._crm_del(res_name)
+                self._del(res_name)
 
     def vplx_rescan_r(self):
         '''
@@ -502,7 +491,7 @@ class VplxCrm(object):
         '''
         s.scsi_rescan(SSH, 'r')
     
-    def modify_allow_initiator(self):
+    def _modify_allow_initiator(self):
         iqn_string=' '.join(consts.glo_iqn_list())
         cmd=f'crm conf set {self.lu_name}.allowed_initiators "{iqn_string}"'
         oprt_id=s.get_oprt_id()
@@ -521,7 +510,7 @@ class VplxCrm(object):
         results=s.get_ssh_cmd(SSH,'',cmd,oprt_id)
         if results:
             if results['sts']:
-                restr = re.compile(f'''(iqn.1993-08.org.debian:01:2b129695b8bbmaxhost:{self.ID}-\d+).*?mapped_lun{self.ID}''', re.DOTALL)
+                restr = re.compile(f'''(iqn.1993-08.org.debian:01:2b129695b8bbmaxhost:{self.id}-\d+).*?mapped_lun{self.id}''', re.DOTALL)
                 re_result=restr.findall(results['rst'].decode('utf-8'))
                 if re_result:
                     if re_result==consts.glo_iqn_list():
@@ -541,7 +530,7 @@ class VplxCrm(object):
                 if self._targetcli_verify():
                     return True
     
-    def crm_and_targetcli_verify(self):
+    def _crm_and_targetcli_verify(self):
         oprt_id=s.get_oprt_id()
         if self._cyclic_check_crm_start(self.lu_name,6,200):
             s.pwl('Success in modify the allow initiator', 2, oprt_id)

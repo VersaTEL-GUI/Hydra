@@ -40,31 +40,27 @@ class Storage:
     def __init__(self):
         self.rpl = consts.glo_rpl()
         self.TID = consts.glo_tsc_id()
+        self.id = None
+        self.str = None
         self.logger = consts.glo_log()
         if self.rpl == 'no':
             init_telnet()
 
-    def lun_create_map(self):
+    def create_map(self):
         s.pwl('Start to configure LUN on NetApp Storage', 0, s.get_oprt_id(), 'start')
-        self._info()
-        self._lun_create()
-        self._lun_map()
-
-    def _info(self):
-        self.ID = consts.glo_id()
-        self.STR = consts.glo_str()
-        self.lun_name = f'{self.STR}_{self.ID}'
+        self.lun_name = f'{self.str}_{self.id}'
+        self._create_lun()
+        self._map_lun()
 
 
-
-    def _lun_create(self):
+    def _create_lun(self):
         '''
         Create LUN with 10M bytes in size
         '''
         oprt_id = s.get_oprt_id()
         unique_str = 'jMPFwXy2'
         cmd = f'lun create -s 10m -t linux /vol/esxi/{self.lun_name}'
-        info_msg = f'Start to create LUN, LUN name: "{self.lun_name}",LUN ID: "{self.ID}"'
+        info_msg = f'Start to create LUN, LUN name: "{self.lun_name}",LUN ID: "{self.id}"'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
         result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
@@ -72,18 +68,18 @@ class Storage:
         else:
             s.handle_exception()
 
-    def _lun_map(self):
+    def _map_lun(self):
         '''
         Map lun of specified lun_id to initiator group
         '''
         oprt_id = s.get_oprt_id()
         unique_str = '1lvpO6N5'
-        info_msg = f'Start to map LUN, LUN name: "{self.lun_name}", LUN ID: "{self.ID}"'
-        cmd = f'lun map /vol/esxi/{self.lun_name} hydra {self.ID}'
+        info_msg = f'Start to map LUN, LUN name: "{self.lun_name}", LUN ID: "{self.id}"'
+        cmd = f'lun map /vol/esxi/{self.lun_name} hydra {self.id}'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
         result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
-            re_string=f'LUN /vol/esxi/{self.lun_name} was mapped to initiator group hydra={self.ID}'
+            re_string=f'LUN /vol/esxi/{self.lun_name} was mapped to initiator group hydra={self.id}'
             re_result=s.re_search(re_string, result)
             if re_result:
                 s.pwl(f'Finish mapping LUN "{self.lun_name}" to VersaPLX', 3, oprt_id, 'finish')
@@ -92,7 +88,7 @@ class Storage:
         else:
             s.handle_exception()
 
-    def _lun_unmap(self, lun_name):
+    def _unmap_lun(self, lun_name):
         '''
         Unmap LUN and determine its succeed
         '''
@@ -113,7 +109,7 @@ class Storage:
         else:
             print('Unmap command execute failed')
 
-    def _lun_destroy(self, lun_name):
+    def _destroy_lun(self, lun_name):
         '''
         delete LUN and determine its succeed
         '''
@@ -146,8 +142,8 @@ class Storage:
         s.pwl('Start to delete storage LUN', 0, '', 'delete')
         for lun_name in lun_to_del_list:
             s.pwl(f'Deleting LUN "{lun_name}"', 1, '', 'delete')
-            self._lun_unmap(lun_name)
-            self._lun_destroy(lun_name)
+            self._unmap_lun(lun_name)
+            self._destroy_lun(lun_name)
 
 
 if __name__ == '__main__':

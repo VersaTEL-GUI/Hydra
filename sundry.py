@@ -4,14 +4,52 @@ import consts
 import sys
 import re
 import time
-import os
-import getpass
 import traceback
-import socket
 from random import shuffle
 import debug_log
+import sundry as s
 
 TARGET_IQN='iqn.2020-06.com.example:test-max-lun'
+
+
+class GetNewDisk():
+    def __init__(self):
+        pass
+
+    def get_disk_from_netapp(self, ssh_obj):
+        Iscsi.create_session()
+        s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
+        blk_dev_name = self.get_disk_dev(ssh_obj, 'NETAPP')
+        return blk_dev_name
+
+    def get_disk_from_vplx(self, ssh_obj):
+        Iscsi.create_session()
+        dev_name = self.get_disk_dev(ssh_obj,'LIO-ORG')
+        return dev_name
+
+    def find_new_disk(self, ssh_obj, string):
+        id = consts.glo_id()
+        result_lsscsi = get_lsscsi(ssh_obj, 'D37nG6Yi', get_oprt_id())
+        re_string = f'\:{id}\].*{string}[ 0-9a-zA-Z._]*(/dev/sd[a-z]{{1,3}})'
+        disk_dev = re_search(re_string, result_lsscsi)
+        if disk_dev:
+            return disk_dev.group(1)
+
+    def get_disk_dev(self, ssh_obj, dev_vendor):
+        scsi_rescan(ssh_obj, 'n')
+        disk_dev = self.find_new_disk(ssh_obj, dev_vendor)
+        if disk_dev:
+            pwl(f'Succeed in getting disk device "{disk_dev}" with id {consts.glo_id()}', 3, '', 'finish')
+            return disk_dev
+        else:
+            scsi_rescan(ssh_obj, 'a')
+            pwl(f'No disk with SCSI ID "{consts.glo_id()}" found, scan again...', 3, '', 'start')
+            disk_dev = self.find_new_disk(ssh_obj, dev_vendor)
+            if disk_dev:
+                pwl('Found the disk successfully', 4, '', 'finish')
+                return disk_dev
+            else:
+                pwce('No disk found, exit the program', 4, 2)
 
 
 def host_random_iqn(random_num):
@@ -29,29 +67,6 @@ def generate_iqn_list(capacity):
         iqn = generate_iqn(iqn_id)
         consts.append_glo_iqn_list(iqn)
 
-def find_new_disk(ssh_obj,string):
-    id=consts.glo_id()
-    result_lsscsi = get_lsscsi(ssh_obj, 'D37nG6Yi', get_oprt_id())
-    re_string = f'\:{id}\].*{string}[ 0-9a-zA-Z._]*(/dev/sd[a-z]{{1,3}})'
-    disk_dev= re_search(re_string, result_lsscsi)
-    if disk_dev:
-        return disk_dev.group(1)
-
-def get_disk_dev(ssh_obj,dev_vendor):
-    scsi_rescan(ssh_obj, 'n')
-    disk_dev = find_new_disk(ssh_obj,dev_vendor)
-    if disk_dev:
-        pwl(f'Succeed in getting disk device "{disk_dev}" with id {consts.glo_id()}', 3, '', 'finish')
-        return disk_dev
-    else:
-        scsi_rescan(ssh_obj, 'a')
-        pwl(f'No disk with SCSI ID "{consts.glo_id()}" found, scan again...', 3, '', 'start')
-        disk_dev = find_new_disk(ssh_obj,dev_vendor)
-        if disk_dev:
-            pwl('Found the disk successfully', 4, '', 'finish')
-            return disk_dev
-        else:
-            pwce('No disk found, exit the program', 4, 2)
 
 class DebugLog(object):
     def __init__(self, ssh_obj, debug_folder, host):
