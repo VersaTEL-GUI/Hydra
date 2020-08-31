@@ -71,12 +71,12 @@ class HydraControl():
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
                 self._netapp.create_map()
-                time.sleep(1.5)
+                time.sleep(0.5)
                 self._drbd.cfg()
                 self._crm.cfg()
-                time.sleep(1.5)
+                time.sleep(0.5)
                 print(f'{"":-^{format_width}}', '\n')
-                time.sleep(1.5)
+                time.sleep(0.5)
                 self._host.io_test()
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
@@ -178,44 +178,39 @@ class HydraControl():
             print()
             s.pwe('No qualified resources to be delete.', 2, 2)
 
-
-
-    def run_rpl_tid(self, args, parser_obj):
+    def replay_parser(self):
         consts.set_glo_rpl('yes')
         consts.set_glo_log_switch('no')
         logdb.prepare_db()
-        db = consts.glo_db()
+        self.db = consts.glo_db()
+
+    def run_rpl_tid(self, args, parser_obj):
         if args.tid:
             consts.set_glo_tsc_id(args.tid)
             print('* MODE : REPLAY *')
-        via_cmd_str = db.get_cmd_via_tid(consts.glo_tsc_id())
-
-        cmd_args = parser_obj.parse_args(eval(via_cmd_str)['cmd'].split(' '))
-        print('sdfdsf',cmd_args)
-        if cmd_args.l1 == 'lun':
-            self.run_lun(cmd_args)
-        elif cmd_args.l1 == 'iqn':
-            if cmd_args.l2 == 'o2n':
-                self.run_iqn_o2n(cmd_args)
-            elif cmd_args.l2 == 'n2n':
-                pass
-                self.run_iqn_n2n(cmd_args)
+        via_cmd_str = self.db.get_cmd_via_tid(consts.glo_tsc_id())
+        via_args = parser_obj.parse_args(eval(via_cmd_str)['cmd'].split(' '))
+        if via_args.l1 == 'lun':
+            self.run_lun(via_args)
+        elif via_args.l1 == 'iqn':
+            if via_args.l2 == 'o2n':
+                self.run_iqn_o2n(via_args)
+            elif via_args.l2 == 'n2n':
+                self.run_iqn_n2n(via_args)
+        else:
+            print(f'事务:{consts.glo_tsc_id()} 不满足replay条件，所执行的命令为：{via_cmd_str}')
 
     def run_rpl_date(self, args):
-        logdb.prepare_db()
-        db = consts.glo_db()
         print('* MODE : REPLAY *')
-        list_tid = db.get_transaction_id_via_date(
+        list_tid = self.db.get_transaction_id_via_date(
             args.date[0], args.date[1])
         for tid in list_tid:
             consts.set_glo_tsc_id(tid)
             self.run_rpl_tid(args)
 
     def run_rpl_all(self, args):
-        logdb.prepare_db()
-        db = consts.glo_db()
         print('* MODE : REPLAY *')
-        list_tid = db.get_all_transaction()
+        list_tid = self.db.get_all_transaction()
         for tid in list_tid:
             consts.set_glo_tsc_id(tid)
             self.run_rpl_tid(args)

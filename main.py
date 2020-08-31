@@ -192,6 +192,7 @@ class HydraArgParse():
             ctrl.log_user_input(args)
             ctrl.delete_resource(args)
         elif args.l1 == 'rpl':
+            ctrl.replay_parser()
             if args.tid:
                 ctrl.run_rpl_tid(args, self.parser)
             elif args.date:
