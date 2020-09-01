@@ -191,7 +191,6 @@ class HydraControl():
         self.db = consts.glo_db()
 
     def run_rpl_tid(self, args, parser_obj):
-
         if args.tid:
             consts.set_glo_tsc_id(args.tid)
             print('* MODE : REPLAY *')
@@ -206,6 +205,8 @@ class HydraControl():
                     self.run_iqn_o2n()
                 elif via_args.l2 == 'n2n':
                     self.run_iqn_n2n(via_args)
+            else:
+                print(f'事务:{consts.glo_tsc_id()} 不满足replay条件，所执行的命令为：python main.py {via_cmd_dict["cmd"]}')
         else:
             print(f'事务:{consts.glo_tsc_id()} 不满足replay条件，所执行的命令为：python main.py {via_cmd_dict["cmd"]}')
 
