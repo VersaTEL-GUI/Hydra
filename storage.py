@@ -48,43 +48,43 @@ class Storage:
 
     def create_map(self):
         s.pwl('Start to configure LUN on NetApp Storage', 0, s.get_oprt_id(), 'start')
-        self.lun_name = f'{self.str}_{self.id}'
-        self._create_lun()
-        self._map_lun()
+        lun_name = f'{self.str}_{self.id}'
+        self._create_lun(lun_name)
+        self._map_lun(lun_name)
 
 
-    def _create_lun(self):
+    def _create_lun(self, lun_name):
         '''
         Create LUN with 10M bytes in size
         '''
         oprt_id = s.get_oprt_id()
         unique_str = 'jMPFwXy2'
-        cmd = f'lun create -s 10m -t linux /vol/esxi/{self.lun_name}'
-        info_msg = f'Start to create LUN, LUN name: "{self.lun_name}",LUN ID: "{self.id}"'
+        cmd = f'lun create -s 10m -t linux /vol/esxi/{lun_name}'
+        info_msg = f'Start to create LUN, LUN name: "{lun_name}",LUN ID: "{self.id}"'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
         result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
-            s.pwl(f'Succeed in creating LUN "{self.lun_name}"', 3, oprt_id, 'finish')
+            s.pwl(f'Succeed in creating LUN "{lun_name}"', 3, oprt_id, 'finish')
         else:
             s.handle_exception()
 
-    def _map_lun(self):
+    def _map_lun(self, lun_name):
         '''
         Map lun of specified lun_id to initiator group
         '''
         oprt_id = s.get_oprt_id()
         unique_str = '1lvpO6N5'
-        info_msg = f'Start to map LUN, LUN name: "{self.lun_name}", LUN ID: "{self.id}"'
-        cmd = f'lun map /vol/esxi/{self.lun_name} hydra {self.id}'
+        info_msg = f'Start to map LUN, LUN name: "{lun_name}", LUN ID: "{self.id}"'
+        cmd = f'lun map /vol/esxi/{lun_name} hydra {self.id}'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
         result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
-            re_string=f'LUN /vol/esxi/{self.lun_name} was mapped to initiator group hydra={self.id}'
+            re_string=f'LUN /vol/esxi/{lun_name} was mapped to initiator group hydra={self.id}'
             re_result=s.re_search(re_string, result)
             if re_result:
-                s.pwl(f'Finish mapping LUN "{self.lun_name}" to VersaPLX', 3, oprt_id, 'finish')
+                s.pwl(f'Finish mapping LUN "{lun_name}" to VersaPLX', 3, oprt_id, 'finish')
             else:
-                s.pwce(f'Failed to map LUN "{self.lun_name}"', 3, 2)
+                s.pwce(f'Failed to map LUN "{lun_name}"', 3, 2)
         else:
             s.handle_exception()
 

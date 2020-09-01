@@ -18,7 +18,7 @@ class MyArgumentParser(argparse.ArgumentParser):
     def print_usage(self, file=None):
         logger = consts.glo_log()
         cmd = ' '.join(sys.argv[1:])
-        logger.write_to_log('F','DATA', 'INFO', 'cmd_input', '', {'valid':'1','cmd':cmd})
+        logger.write_to_log('F','DATA', 'INFO', 'cmd_input', '', {'valid':'0','cmd':cmd})
         logger.write_to_log('T', 'INFO', 'INFO', 'finish','', 'print usage')
         if file is None:
             file = sys.stdout
@@ -83,7 +83,7 @@ class HydraArgParse():
             '--all',
             dest='all',
             action="store_true",
-            help='The time period for replay'
+            help='Replay all'
         )
         #lun or maxlun
         parser_maxlun = sub_parser.add_parser(
@@ -115,7 +115,7 @@ class HydraArgParse():
         parser_iqn_sub = self.parser_iqn.add_subparsers(dest='l2')
         #iqn otm
         parser_iqn_o2n = parser_iqn_sub.add_parser(
-            'o2n ',
+            'o2n',
             help = 'Do the max supported Hosts test with one LUN'
         )
         #iqn mtm
@@ -172,7 +172,6 @@ class HydraArgParse():
             help="just for test"
         )
 
-
     def start(self):
         ctrl = c.HydraControl()
         args = self.parser.parse_args()
@@ -187,7 +186,7 @@ class HydraArgParse():
                 ctrl.log_user_input(args)
                 ctrl.run_iqn_n2n(args)
             else:
-                self.parser_iqn.print_usage()
+                self.parser_iqn.print_help()
         elif args.l1 == 'del':
             ctrl.log_user_input(args)
             ctrl.delete_resource(args)
@@ -196,9 +195,9 @@ class HydraArgParse():
             if args.tid:
                 ctrl.run_rpl_tid(args, self.parser)
             elif args.date:
-                ctrl.run_rpl_date(args)
+                ctrl.run_rpl_date(args, self.parser)
             elif args.all:
-                ctrl.run_rpl_all(args)
+                ctrl.run_rpl_all(args, self.parser)
             else:
                 self.parser_replay.print_help()
         elif args.l1 == 'version':

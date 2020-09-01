@@ -61,9 +61,7 @@ class HydraControl():
         self.update_attribute('str')
         iqn = s.generate_iqn('0')
         consts.append_glo_iqn_list(iqn)
-
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
-
         self._host.modify_host_iqn(iqn)
         for lun_id in consts.glo_id_list():
             consts.set_glo_id(lun_id)
@@ -102,7 +100,7 @@ class HydraControl():
                 if num == 0:
                     self._crm.cfg()
                 elif num > 0:
-                    self._drbd.status_verify()
+                    self._drbd.status_verify(f'res_{consts.glo_str()}_{consts.glo_id()}')
                     self._crm.modify_initiator_and_verify()
                 time.sleep(0.5)
                 print(f'{"":-^{format_width}}', '\n')
@@ -120,6 +118,9 @@ class HydraControl():
         id_list = s.change_id_range_to_list(args.id_range)
         consts.set_glo_id_list(id_list)
         consts.set_glo_str('maxhost')
+
+        random_number = args.random_number if args.random_number else 3
+
         self.update_attribute('str')
 
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
@@ -127,7 +128,7 @@ class HydraControl():
         for lun_id in id_list:
             consts.set_glo_iqn_list([])
             consts.set_glo_id(lun_id)
-            self.update_attribute('str')
+            self.update_attribute('id')
             s.generate_iqn_list(args.capacity)
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
@@ -137,7 +138,7 @@ class HydraControl():
                 time.sleep(0.5)
                 self._crm.cfg()
                 time.sleep(0.5)
-                for iqn in s.host_random_iqn(args.random_number):
+                for iqn in s.host_random_iqn(random_number):
                     print(f'{"":-^{format_width}}', '\n')
                     self._host.modify_host_iqn(iqn)
                     self._host.io_test()
@@ -149,9 +150,14 @@ class HydraControl():
         User determines whether to delete and execute delete method
         '''
         # wirte consts id_range and uiq_str
-        id_list = s.change_id_range_to_list(args.id_range)
-        consts.set_glo_id_list(id_list)
-        consts.set_glo_str(args.uniq_str)
+        self.instantiation_class()
+        if args.id_range:
+            id_list = s.change_id_range_to_list(args.id_range)
+            consts.set_glo_id_list(id_list)
+        if args.uniq_str:
+            consts.set_glo_str(args.uniq_str)
+        self.update_attribute('id')
+        self.update_attribute('str')
         crm_to_del_list = s.get_to_del_list(self._crm.get_all_cfgd_res())
         drbd_to_del_list = s.get_to_del_list(self._drbd.get_all_cfgd_drbd())
         lun_to_del_list = s.get_to_del_list(self._netapp.get_all_cfgd_lun())
@@ -167,7 +173,7 @@ class HydraControl():
                 self._crm.del_crms(crm_to_del_list)
                 self._drbd.del_drbds(drbd_to_del_list)
                 self._netapp.del_luns(lun_to_del_list)
-                s.pwl('Start to remove all deleted disk device on netapp\vplx\host', 0)
+                s.pwl('Start to remove all deleted disk device on netapp vplx host', 0)
                 # remove all deleted disk device on vplx and host
                 self._crm.vplx_rescan_r()
                 self._host.host_rescan_r()
@@ -185,35 +191,38 @@ class HydraControl():
         self.db = consts.glo_db()
 
     def run_rpl_tid(self, args, parser_obj):
+
         if args.tid:
             consts.set_glo_tsc_id(args.tid)
             print('* MODE : REPLAY *')
-        via_cmd_str = self.db.get_cmd_via_tid(consts.glo_tsc_id())
-        via_args = parser_obj.parse_args(eval(via_cmd_str)['cmd'].split(' '))
-        if via_args.l1 == 'lun':
-            self.run_lun(via_args)
-        elif via_args.l1 == 'iqn':
-            if via_args.l2 == 'o2n':
-                self.run_iqn_o2n(via_args)
-            elif via_args.l2 == 'n2n':
-                self.run_iqn_n2n(via_args)
+        via_cmd_dict = eval(self.db.get_cmd_via_tid(consts.glo_tsc_id()))
+        if via_cmd_dict['valid'] == '1':
+            print(f'事务:{consts.glo_tsc_id()} 满足replay条件，所执行的命令为：python main.py {via_cmd_dict["cmd"]}')
+            via_args = parser_obj.parse_args(via_cmd_dict['cmd'].split(' '))
+            if via_args.l1 == 'lun':
+                self.run_lun(via_args)
+            elif via_args.l1 == 'iqn':
+                if via_args.l2 == 'o2n':
+                    self.run_iqn_o2n()
+                elif via_args.l2 == 'n2n':
+                    self.run_iqn_n2n(via_args)
         else:
-            print(f'事务:{consts.glo_tsc_id()} 不满足replay条件，所执行的命令为：{via_cmd_str}')
+            print(f'事务:{consts.glo_tsc_id()} 不满足replay条件，所执行的命令为：python main.py {via_cmd_dict["cmd"]}')
 
-    def run_rpl_date(self, args):
+    def run_rpl_date(self, args, parser_obj):
         print('* MODE : REPLAY *')
         list_tid = self.db.get_transaction_id_via_date(
             args.date[0], args.date[1])
         for tid in list_tid:
             consts.set_glo_tsc_id(tid)
-            self.run_rpl_tid(args)
+            self.run_rpl_tid(args, parser_obj)
 
-    def run_rpl_all(self, args):
+    def run_rpl_all(self, args, parser_obj):
         print('* MODE : REPLAY *')
         list_tid = self.db.get_all_transaction()
         for tid in list_tid:
             consts.set_glo_tsc_id(tid)
-            self.run_rpl_tid(args)
+            self.run_rpl_tid(args, parser_obj)
 
     def run_show_version(self):
         print(f'Hydra {consts.VERSION}')

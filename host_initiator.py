@@ -54,7 +54,6 @@ class HostTest(object):
         self.rpl = consts.glo_rpl()
         self._prepare()
         self.iscsi=s.Iscsi(SSH,VPLX_IP)
-    
       
     def modify_host_iqn(self, initiator_iqn):
         if self.iscsi.modify_host_iqn(initiator_iqn):
@@ -147,7 +146,8 @@ class HostTest(object):
 
     def _mount_disk(self):
         s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 2)
-        dev_name = s.GetNewDisk.get_disk_from_vplx(SSH )
+        gnd = s.GetNewDisk(SSH, VPLX_IP)
+        dev_name = gnd.get_disk_from_vplx()
         if self._format(dev_name):
             if self._mount(dev_name):
                 return True
