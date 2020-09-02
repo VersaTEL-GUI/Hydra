@@ -42,7 +42,7 @@ def generate_iqn_list(capacity):
         iqn = generate_iqn(iqn_id)
         consts.append_glo_iqn_list(iqn)
 
-def change_id_range_to_list(id_range):
+def id_str_to_list(id_range):
     id_list = []
     id_range_list=[int(i) for i in id_range]
     if len(id_range_list) not in [1, 2]:
@@ -353,6 +353,33 @@ def handle_exception(str='',level=0,warning_level=0):
     else:
         pwce(str,level,warning_level)
 
+def get_answer(str_input):
+    logger = consts.glo_log()
+    rpl = consts.glo_rpl()
+    logdb = consts.glo_db()
+    transaction_id = consts.glo_tsc_id()
+
+    if rpl == 'no':
+        answer = input(str_input)
+        logger.write_to_log('F' ,'DATA', 'INPUT', 'confirm_input', 'confirm deletion', answer)
+    else:
+        print(str_input)
+        time, answer = logdb.get_anwser(transaction_id)
+        if not time:
+            time = ''
+        print(f'RE:{time:<20} 用户输入: {answer}')
+    return answer
+
+def get_tid_list(args, db_obj):
+    tid_list=[]
+    if args.tid:
+        tid_list.append(args.tid)
+    elif args.date:
+        tid_list = db_obj.get_transaction_id_via_date(
+            args.date[0], args.date[1])
+    elif args.all:
+        tid_list = db_obj.get_all_transaction()
+    return tid_list
 
 class GetNewDisk():
     def __init__(self, ssh_obj, target_ip):
@@ -393,6 +420,8 @@ class GetNewDisk():
                 return disk_dev
             else:
                 pwce('No disk found, exit the program', 4, 2)
+
+
 
 class DebugLog(object):
     def __init__(self, ssh_obj, debug_folder, host):

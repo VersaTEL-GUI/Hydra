@@ -7,8 +7,9 @@ import storage
 import host_initiator as h
 import sundry as s
 import log
-import sys
 import logdb
+import traceback
+
 import debug_log
 
 class HydraControl():
@@ -21,7 +22,7 @@ class HydraControl():
         consts.set_glo_log(self.logger)
 
     #初始化功能类
-    def instantiation_class(self):
+    def initialize_class(self):
         # Initialize connection
         self._netapp = storage.Storage()
         self._drbd = vplx.VplxDrbd()
@@ -39,24 +40,12 @@ class HydraControl():
             self._drbd.str = consts.glo_str()
             self._crm.str = consts.glo_str()
 
-    def get_tid_list(self, args, db_obj):
-        tid_list=[]
-        if args.tid:
-            tid_list.append(args.tid)
-        elif args.date:
-            tid_list = db_obj.get_transaction_id_via_date(
-                args.date[0], args.date[1])
-        elif args.all:
-            tid_list = db_obj.get_all_transaction()
-        return tid_list
-
     @s.record_exception
-    def run_lun(self, args):
-        self.instantiation_class()
+    def lun(self, args):
+        self.initialize_class()
 
         # wirte consts id_range and uiq_str
-        id_list = s.change_id_range_to_list(args.id_range)
-        consts.set_glo_id_list(id_list)
+        id_list = s.id_str_to_list(args.id_range)
         consts.set_glo_str(args.uniq_str)
 
         self.update_attribute('str')
@@ -64,7 +53,7 @@ class HydraControl():
         consts.append_glo_iqn_list(iqn)
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
         self._host.modify_host_iqn(iqn)
-        for lun_id in consts.glo_id_list():
+        for lun_id in id_list:
             consts.set_glo_id(lun_id)
             self.update_attribute('id')
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
@@ -81,8 +70,8 @@ class HydraControl():
                 print(f'{"":-^{format_width}}', '\n')
 
     @s.record_exception
-    def run_iqn_o2n(self):
-        self.instantiation_class()
+    def iqn_o2n(self, args):
+        self.initialize_class()
         num = 0
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
         consts.set_glo_str('maxhost')
@@ -112,11 +101,11 @@ class HydraControl():
             print(f'{"":-^{format_width}}', '\n')
 
     @s.record_exception
-    def run_iqn_n2n(self, args):
-        self.instantiation_class()
+    def iqn_n2n(self, args):
+        self.initialize_class()
 
         # wirte consts id_range and uiq_str
-        id_list = s.change_id_range_to_list(args.id_range)
+        id_list = s.id_str_to_list(args.id_range)
         consts.set_glo_id_list(id_list)
         consts.set_glo_str('maxhost')
 
@@ -151,12 +140,13 @@ class HydraControl():
         User determines whether to delete and execute delete method
         '''
         # wirte consts id_range and uiq_str
-        self.instantiation_class()
+        self.initialize_class()
         if args.id_range:
-            id_list = s.change_id_range_to_list(args.id_range)
+            id_list = s.id_str_to_list(args.id_range)
             consts.set_glo_id_list(id_list)
         if args.uniq_str:
             consts.set_glo_str(args.uniq_str)
+
         self.update_attribute('id')
         self.update_attribute('str')
         crm_to_del_list = s.get_to_del_list(self._crm.get_all_cfgd_res())
@@ -168,8 +158,11 @@ class HydraControl():
             s.prt_res_to_del('\nDRBD resource', drbd_to_del_list)
         if lun_to_del_list:
             s.prt_res_to_del('\nStorage LUN', lun_to_del_list)
+
         if crm_to_del_list or drbd_to_del_list or lun_to_del_list:
-            answer = input('\n\nDo you want to delete these resource? (yes/y/no/n):')
+
+            answer = s.get_answer('\n\nDo you want to delete these resource? (yes/y/no/n):')
+
             if answer.strip() == 'yes' or answer.strip() == 'y':
                 self._crm.del_crms(crm_to_del_list)
                 self._drbd.del_drbds(drbd_to_del_list)
@@ -185,7 +178,31 @@ class HydraControl():
             print()
             s.pwe('No qualified resources to be delete.', 2, 2)
 
-    def run_show_version(self,*args):
+    def replay(self, args, replay_obj, parser_obj):
+        consts.set_glo_rpl('yes')
+        consts.set_glo_log_switch('no')
+        logdb.prepare_db()
+        db = consts.glo_db()
+        tid_list = s.get_tid_list(args, db)
+        if not tid_list:
+            replay_obj.print_help()
+            return
+        print('* MODE : REPLAY *')
+        for tid in tid_list:
+            consts.set_glo_tsc_id(tid)
+            via_cmd_dict = eval(db.get_cmd_via_tid(tid))
+            if via_cmd_dict['valid'] == '1':
+                via_args = parser_obj.parse_args(via_cmd_dict['cmd'].split())
+                try:
+                    via_args.func(via_args)  # 调用argparse绑定函数
+                except consts.ReplayExit:
+                    print('该事务replay结束')
+                except Exception:
+                    print(str(traceback.format_exc()))
+            else:
+                print(f'事务:{tid} 不满足replay条件，所执行的命令为：python main.py {via_cmd_dict["cmd"]}')
+
+    def show_version(self,*args):
         print(f'Hydra {consts.VERSION}')
 
     def run_test(self):

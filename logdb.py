@@ -109,6 +109,14 @@ class LogDB():
         else:
             return ('','')
 
+    def get_anwser(self, transaction_id):
+        sql = f"SELECT time,data FROM logtable WHERE transaction_id = '{transaction_id}' and describe2 = 'confirm deletion'"
+        result = self.sql_fetch_one(sql)
+        if result:
+            return result
+        else:
+            return ('', '')
+
     #none
     def get_string_id(self, transaction_id):
         sql = f"SELECT data FROM logtable WHERE describe1 = 'Start a new trasaction' and transaction_id = '{transaction_id}'"

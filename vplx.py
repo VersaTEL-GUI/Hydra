@@ -474,11 +474,14 @@ class VplxCrm(object):
         cmd_crm_res_show = 'crm res show'
         show_result = s.get_ssh_cmd(
             SSH, 'IpJhGfVc4', cmd_crm_res_show, s.get_oprt_id())
-        if show_result['sts']:
-            re_crm_res = f'res_\w*_[0-9]{{1,3}}'
-            show_result = show_result['rst'].decode('utf-8')
-            crm_res_cfgd_list = s.re_findall(re_crm_res, show_result)
-            return crm_res_cfgd_list
+        if show_result:
+            if show_result['sts']:
+                re_crm_res = f'res_\w*_[0-9]{{1,3}}'
+                show_result = show_result['rst'].decode('utf-8')
+                crm_res_cfgd_list = s.re_findall(re_crm_res, show_result)
+                return crm_res_cfgd_list
+        else:
+            s.handle_exception()
 
     def del_crms(self, crm_to_del_list):
         if crm_to_del_list:
