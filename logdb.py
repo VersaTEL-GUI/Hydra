@@ -109,6 +109,7 @@ class LogDB():
         else:
             return ('','')
 
+    #none
     def get_string_id(self, transaction_id):
         sql = f"SELECT data FROM logtable WHERE describe1 = 'Start a new trasaction' and transaction_id = '{transaction_id}'"
         _id = self.sql_fetch_one(sql)
@@ -178,10 +179,6 @@ class LogDB():
         sql = f"SELECT data FROM logtable WHERE transaction_id = '{transaction_id}' and id = {db_id}"
         return self.sql_fetch_one(sql)
 
-
-
-
-
     def get_logdb(self):
         self.drop_tb()
         self.cur.execute(self.create_table_sql)
@@ -194,7 +191,6 @@ class LogDB():
         if not isFileExists(log_path):
             print('no file')
             return
-
         for file in get_target_file(logfilename):
             f = open('./' + file)
             content = f.read()
@@ -202,7 +198,6 @@ class LogDB():
             for data_one in file_data:
                 data = id + data_one
                 self.insert(data)
-
             f.close()
 
         self.con.commit()
