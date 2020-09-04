@@ -436,15 +436,12 @@ class DebugLog(object):
         self.host = host
         self._mk_debug_folder()
 
-    #未改，对逻辑不清楚
     def _mk_debug_folder(self):
         # -m:增加判断, 用file命令结果判断, 如果已存在,则不创建
         print('self.dbg_folder',self.dbg_folder)
         output = self.SSH.execute_command(f'mkdir {self.dbg_folder}')
-
         self.SSH.execute_command(f'mkdir {self.dbg_folder}/{self.host}')
-
-        if output['sts']:
+        if output['rst']:
             pass
 
         else:
