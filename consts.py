@@ -3,7 +3,7 @@
 VERSION = 'v0.0.1'
 
 class ReplayExit(Exception):
-    "replay时，输出日志中的异常信息后，此次replay事务也随之停止"
+    "replay时，输出日志中的异常信息后，此次replay事务结束，进行下一次事务"
     pass
 
 

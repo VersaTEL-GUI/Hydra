@@ -28,6 +28,9 @@ def init_ssh():
 def umount_mnt():
     SSH.execute_command(f'umount {MOUNT_POINT}')
 
+def change_iqn(iqn):
+    iscsi=s.Iscsi(SSH, VPLX_IP)
+    iscsi.modify_iqn(iqn)
 
 class DebugLog(object):
     def __init__(self):
@@ -54,19 +57,11 @@ class HostTest(object):
         self.rpl = consts.glo_rpl()
         self._prepare()
         self.iscsi=s.Iscsi(SSH,VPLX_IP)
-      
-    def modify_host_iqn(self, initiator_iqn):
-        if self.iscsi.modify_host_iqn(initiator_iqn):
-            if self.iscsi.restart_service():
-                return True
 
     def _prepare(self):
         if self.rpl == 'no':
             init_ssh()
             umount_mnt()
-            # self._create_iscsi_session()
-        if self.rpl == 'yes':
-            pass
 
     def _mount(self, dev_name):
         '''
@@ -157,6 +152,7 @@ class HostTest(object):
             s.pwce(f'Failed to format device "{dev_name}"', 3, 2)
 
     def io_test(self):
+        time.sleep(0.5)
         s.pwl('Start to format，write and read the LUN on Host', 0, s.get_oprt_id(), 'start')
         self._mount_disk()
         s.pwl(f'Start speed test', 2, '', 'start')

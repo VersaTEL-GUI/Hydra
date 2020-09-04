@@ -66,6 +66,7 @@ class VplxDrbd(object):
             init_ssh()
 
     def cfg(self):
+        time.sleep(0.5)
         s.pwl('Start to configure DRDB resource and CRM resource on VersaPLX', 0, s.get_oprt_id(), 'start')
         s.pwl('Start to configure DRBD resource', 2, '', 'start')
         res_name = f'res_{self.str}_{self.id}'
@@ -267,6 +268,7 @@ class VplxCrm(object):
             init_ssh()
 
     def cfg(self):
+        time.sleep(0.5)
         lu_name = f'res_{self.str}_{self.id}'
         s.pwl('Start to configure crm resource', 2, '', 'start')
         self._create(lu_name)

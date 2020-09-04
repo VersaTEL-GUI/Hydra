@@ -52,7 +52,6 @@ class Storage:
         self._create_lun(lun_name)
         self._map_lun(lun_name)
 
-
     def _create_lun(self, lun_name):
         '''
         Create LUN with 10M bytes in size

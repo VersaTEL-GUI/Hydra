@@ -4,7 +4,7 @@ import consts
 import time
 import vplx
 import storage
-import host_initiator as h
+import host_initiator as host
 import sundry as s
 import log
 import logdb
@@ -27,15 +27,15 @@ class HydraControl():
         self._netapp = storage.Storage()
         self._drbd = vplx.VplxDrbd()
         self._crm = vplx.VplxCrm()
-        self._host = h.HostTest()
+        self._host = host.HostTest()
 
     #更新功能类中的属性
-    def update_attribute(self, attr):
-        if attr == 'id':
+    def update_attribute(self, *args):
+        if 'id' in args:
             self._netapp.id = consts.glo_id()
             self._drbd.id = consts.glo_id()
             self._crm.id = consts.glo_id()
-        if attr == 'str':
+        if 'str' in args:
             self._netapp.str = consts.glo_str()
             self._drbd.str = consts.glo_str()
             self._crm.str = consts.glo_str()
@@ -51,21 +51,20 @@ class HydraControl():
         self.update_attribute('str')
         iqn = s.generate_iqn('0')
         consts.append_glo_iqn_list(iqn)
+
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
-        self._host.modify_host_iqn(iqn)
+
+        host.change_iqn(iqn)
         for lun_id in id_list:
             consts.set_glo_id(lun_id)
             self.update_attribute('id')
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
                 self._netapp.create_map()
-                time.sleep(0.5)
                 self._drbd.cfg()
                 self._crm.cfg()
-                time.sleep(0.5)
-                print(f'{"":-^{format_width}}', '\n')
-                time.sleep(0.5)
                 self._host.io_test()
+                print(f'{"":-^{format_width}}', '\n')
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
 
@@ -75,14 +74,10 @@ class HydraControl():
         num = 0
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
         consts.set_glo_str('maxhost')
-        self.update_attribute('id')
-        self.update_attribute('str')
-        print(f'**** Start working for ID {num} ****'.center(format_width, '='))
+        self.update_attribute('id', 'str')
         try:
             self._netapp.create_map()
-            time.sleep(0.5)
             self._drbd.cfg()
-            time.sleep(0.5)
             while True:
                 s.prt(f'The current IQN number of max supported hosts test is {num}')
                 iqn = s.generate_iqn(num)
@@ -92,9 +87,8 @@ class HydraControl():
                 elif num > 0:
                     self._drbd.status_verify(f'res_{consts.glo_str()}_{consts.glo_id()}')
                     self._crm.modify_initiator_and_verify()
-                time.sleep(0.5)
                 print(f'{"":-^{format_width}}', '\n')
-                self._host.modify_host_iqn(iqn)
+                host.change_iqn(iqn)
                 self._host.io_test()
                 num += 1
         except consts.ReplayExit:
@@ -109,29 +103,28 @@ class HydraControl():
         consts.set_glo_id_list(id_list)
         consts.set_glo_str('maxhost')
 
-        random_number = args.random_number if args.random_number else 3
+        random_number = args.random_number \
+            if args.random_number and args.capacity>args.random_number \
+            else args.capacity
 
         self.update_attribute('str')
 
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
 
         for lun_id in id_list:
-            consts.set_glo_iqn_list([])
             consts.set_glo_id(lun_id)
             self.update_attribute('id')
             s.generate_iqn_list(args.capacity)
+
             print(f'**** Start working for ID {lun_id} ****'.center(format_width, '='))
             try:
                 self._netapp.create_map()
-                time.sleep(0.5)
                 self._drbd.cfg()
-                time.sleep(0.5)
                 self._crm.cfg()
-                time.sleep(0.5)
-                for iqn in s.host_random_iqn(random_number):
-                    print(f'{"":-^{format_width}}', '\n')
-                    self._host.modify_host_iqn(iqn)
+                for iqn in s.pick_iqns_random(random_number):
+                    host.change_iqn(iqn)
                     self._host.io_test()
+                    print(f'{"":-^{format_width}}', '\n')
             except consts.ReplayExit:
                 print(f'{"":-^{format_width}}', '\n')
 
@@ -205,8 +198,5 @@ class HydraControl():
     def show_version(self,*args):
         print(f'Hydra {consts.VERSION}')
 
-    def run_test(self):
+    def run_test(self, *args):
         debug_log.collect_debug_log()
-
-
-

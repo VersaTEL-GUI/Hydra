@@ -27,7 +27,7 @@ def record_exception(func):
             raise e
     return wrapper
 
-def host_random_iqn(random_num):
+def pick_iqns_random(random_num):
     iqn_list = consts.glo_iqn_list()
     iqn_random_list = sorted(random.sample(iqn_list, random_num))
     return iqn_random_list
@@ -38,6 +38,7 @@ def generate_iqn(num):
     return iqn
 
 def generate_iqn_list(capacity):
+    consts.set_glo_iqn_list([])
     for iqn_id in range(capacity):
         iqn = generate_iqn(iqn_id)
         consts.append_glo_iqn_list(iqn)
@@ -330,11 +331,9 @@ def pwce(str, level, warning_level):
     if rpl == 'no':
         debug_log.collect_debug_log()
         print('debug')
-    if warning_level == 2:
-        if rpl == 'no':
-            sys.exit()
-        else:
-            raise consts.ReplayExit
+        sys.exit()
+    else:
+        raise consts.ReplayExit
 
 def handle_exception(str='',level=0,warning_level=0):
     rpl = consts.glo_rpl()
@@ -358,7 +357,6 @@ def get_answer(str_input):
     rpl = consts.glo_rpl()
     logdb = consts.glo_db()
     transaction_id = consts.glo_tsc_id()
-
     if rpl == 'no':
         answer = input(str_input)
         logger.write_to_log('F' ,'DATA', 'INPUT', 'confirm_input', 'confirm deletion', answer)
@@ -381,6 +379,13 @@ def get_tid_list(args, db_obj):
         tid_list = db_obj.get_all_transaction()
     return tid_list
 
+def get_random_number(args):
+    if args.random_number:
+        random_number = args.random_number if args.capacity > args.random_number else args.capacity
+    else:
+        random_number = args.capacity
+    return random_number
+
 class GetNewDisk():
     def __init__(self, ssh_obj, target_ip):
         self.ssh_obj = ssh_obj
@@ -389,15 +394,15 @@ class GetNewDisk():
     def get_disk_from_netapp(self):
         self.iscsi.create_session()
         s.pwl(f'Start to get the disk device with id {consts.glo_id()}', 3)
-        blk_dev_name = self.get_disk_dev('NETAPP')
+        blk_dev_name = self._get_disk_dev('NETAPP')
         return blk_dev_name
 
     def get_disk_from_vplx(self):
         self.iscsi.create_session()
-        dev_name = self.get_disk_dev('LIO-ORG')
+        dev_name = self._get_disk_dev('LIO-ORG')
         return dev_name
 
-    def find_new_disk(self, string):
+    def _find_new_disk(self, string):
         id = consts.glo_id()
         result_lsscsi = get_lsscsi(self.ssh_obj, 'D37nG6Yi', get_oprt_id())
         re_string = f'\:{id}\].*{string}[ 0-9a-zA-Z._]*(/dev/sd[a-z]{{1,3}})'
@@ -405,16 +410,16 @@ class GetNewDisk():
         if disk_dev:
             return disk_dev.group(1)
 
-    def get_disk_dev(self, dev_vendor):
+    def _get_disk_dev(self, dev_vendor):
         scsi_rescan(self.ssh_obj, 'n')
-        disk_dev = self.find_new_disk(dev_vendor)
+        disk_dev = self._find_new_disk(dev_vendor)
         if disk_dev:
             pwl(f'Succeed in getting disk device "{disk_dev}" with id {consts.glo_id()}', 3, '', 'finish')
             return disk_dev
         else:
             scsi_rescan(self.ssh_obj, 'a')
             pwl(f'No disk with SCSI ID "{consts.glo_id()}" found, scan again...', 3, '', 'start')
-            disk_dev = self.find_new_disk(dev_vendor)
+            disk_dev = self._find_new_disk(dev_vendor)
             if disk_dev:
                 pwl('Found the disk successfully', 4, '', 'finish')
                 return disk_dev
@@ -431,12 +436,17 @@ class DebugLog(object):
         self.host = host
         self._mk_debug_folder()
 
+    #未改，对逻辑不清楚
     def _mk_debug_folder(self):
-        # -m:增加判断,用file命令结果判断,如果已存在,则不创建
+        # -m:增加判断, 用file命令结果判断, 如果已存在,则不创建
+        print('self.dbg_folder',self.dbg_folder)
         output = self.SSH.execute_command(f'mkdir {self.dbg_folder}')
+
         self.SSH.execute_command(f'mkdir {self.dbg_folder}/{self.host}')
+
         if output['sts']:
             pass
+
         else:
             prt(f'Can not create folder {self.dbg_folder} to stor debug log', 3, 2)
             sys.exit()
@@ -449,6 +459,7 @@ class DebugLog(object):
             else:
                 prt(f'Collect log command "{cmd}" execute failed.', 3, 2)
 
+    #未改，需要了解返回值
     def get_debug_log(self, local_folder):
         dbg_file = f'{self.dbg_folder}.tar'
         self.SSH.execute_command(f'mv {self.dbg_folder}/*.log {self.dbg_folder}/{self.host}')
@@ -473,8 +484,9 @@ class Iscsi(object):
         else:
             pwl(f'The iSCSI session already logged in to {self.tgt_ip}', 3)
 
-    def disconnect_session(self,tgt_iqn):
+    def _end_session(self,tgt_iqn):
         if self._find_session():
+
             if self._logout(tgt_iqn):
                 pwl(f'Success in logout {self.tgt_ip}',2,'','finish')
                 return True
@@ -537,7 +549,12 @@ class Iscsi(object):
         else:
             handle_exception()
 
-    def restart_service(self):
+    def modify_iqn(self, iqn):
+        self._end_session(TARGET_IQN)
+        self._modify_iqn_cfg_file(iqn)
+        self._restart_service()
+
+    def _restart_service(self):
         cmd=f'systemctl restart iscsid open-iscsi'
         oprt_id=get_oprt_id()
         results=get_ssh_cmd(self.SSH,'Uksjdkqi',cmd,oprt_id)
@@ -550,8 +567,7 @@ class Iscsi(object):
         else:
             handle_exception()
 
-    def modify_host_iqn(self,iqn):
-        self.disconnect_session(TARGET_IQN)
+    def _modify_iqn_cfg_file(self, iqn):
         cmd=f'echo "InitiatorName={iqn}" > /etc/iscsi/initiatorname.iscsi'
         oprt_id=get_oprt_id()
         results=get_ssh_cmd(self.SSH,'RTDAJDas',cmd,oprt_id)
@@ -563,6 +579,9 @@ class Iscsi(object):
                 pwe(f'Failed to  modify initiator IQN "{iqn}"',2,2)
         else:
             handle_exception()
+
+
+
 
 if __name__ == '__main__':
     pass

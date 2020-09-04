@@ -4,12 +4,9 @@ import argparse
 import control as c
 import sys
 import consts
-import logdb
-import traceback
 
 class MyArgumentParser(argparse.ArgumentParser):
     def parse_args(self, args=None, namespace=None):
-        # logger = consts.glo_log()
         args, argv = self.parse_known_args(args, namespace)
         if argv:
             msg = ('unrecognized arguments: %s')
@@ -51,7 +48,6 @@ class HydraArgParse():
         self.argparse_init()
         self.args_bind_func()
 
-
     def argparse_init(self):
         self.parser = MyArgumentParser(prog='Hydra',
                                               description='Auto test max supported LUNs/Hosts/Replicas on VersaRAID-SDS')
@@ -91,12 +87,12 @@ class HydraArgParse():
             help='Replay all'
         )
         #lun or maxlun
-        self.parser_maxlun = sub_parser.add_parser(
+        self.parser_lun = sub_parser.add_parser(
             'lun',
             #aliases=['maxlun'],
             help='Do the max supported LUNs test'
         )
-        self.parser_maxlun.add_argument(
+        self.parser_lun.add_argument(
             '-id',
             required=True,
             action="store",
@@ -105,15 +101,13 @@ class HydraArgParse():
             nargs='+',
             help='ID or ID range'
         )
-        self.parser_maxlun.add_argument(
+        self.parser_lun.add_argument(
             '-s',
             required=True,
             action="store",
             dest="uniq_str",
             help="The unique string for this test, affects related naming"
         )
-
-
         #iqn
         self.parser_iqn = sub_parser.add_parser(
             'iqn',
@@ -181,13 +175,14 @@ class HydraArgParse():
 
     def args_bind_func(self):
         self.parser_version.set_defaults(func=self.ctrl.show_version)
-        self.parser_maxlun.set_defaults(func=self.ctrl.lun)
+        self.parser_lun.set_defaults(func=self.ctrl.lun)
         self.parser_iqn.set_defaults(func=self.iqn_print_help)
         self.parser_iqn_o2n.set_defaults(func=self.ctrl.iqn_o2n)
         self.parser_iqn_n2n.set_defaults(func=self.ctrl.iqn_n2n)
         self.parser_delete_re.set_defaults(func=self.ctrl.delete_resource)
         self.parser_replay.set_defaults(func=self.replay)
         self.parser.set_defaults(func=self.parser_print_help)
+        self.parser_test.set_defaults(func=self.ctrl.run_test())
 
     def iqn_print_help(self, *args):
         self.parser_iqn.print_help()
