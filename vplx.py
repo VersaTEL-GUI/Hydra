@@ -25,6 +25,12 @@ def init_ssh():
     if not SSH:
         SSH = connect.ConnSSH(HOST, PORT, USER, PASSWORD, TIMEOUT)
 
+def rescan_after_remove():
+    '''
+    vplx rescan after delete
+    '''
+    s.scsi_rescan(SSH, 'r')
+
 class DebugLog(object):
     def __init__(self):
         init_ssh()
@@ -56,10 +62,9 @@ class VplxDrbd(object):
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()
-        self.id = None
-        self.str = None
+        self.id = consts.glo_id()
+        self.str = consts.glo_str()
         self._prepare()
-        self.iscsi=s.Iscsi(SSH,NETAPP_IP)
 
     def _prepare(self):
         if self.rpl == 'no':
@@ -267,8 +272,8 @@ class VplxCrm(object):
     def __init__(self):
         self.logger = consts.glo_log()
         self.rpl = consts.glo_rpl()
-        self.id = None
-        self.str = None
+        self.id = consts.glo_id()
+        self.str = consts.glo_str()
         if self.rpl == 'no':
             init_ssh()
 
@@ -495,11 +500,7 @@ class VplxCrm(object):
             for res_name in crm_to_del_list:
                 self._del(res_name)
 
-    def vplx_rescan_r(self):
-        '''
-        vplx rescan after delete
-        '''
-        s.scsi_rescan(SSH, 'r')
+
     
     def _modify_allow_initiator(self, lu_name):
         s.pwl('Start to modify_allow_initiator', 2)

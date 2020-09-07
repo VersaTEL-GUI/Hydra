@@ -40,8 +40,8 @@ class Storage:
     def __init__(self):
         self.rpl = consts.glo_rpl()
         self.TID = consts.glo_tsc_id()
-        self.id = None
-        self.str = None
+        self.id = consts.glo_id()
+        self.str = consts.glo_str()
         self.logger = consts.glo_log()
         if self.rpl == 'no':
             init_telnet()
