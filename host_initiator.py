@@ -32,6 +32,12 @@ def change_iqn(iqn):
     iscsi=s.Iscsi(SSH, VPLX_IP)
     iscsi.modify_iqn(iqn)
 
+def host_rescan_r():
+    '''
+    vplx rescan after delete
+    '''
+    s.scsi_rescan(SSH, 'r')
+
 class DebugLog(object):
     def __init__(self):
         init_ssh()
@@ -159,12 +165,6 @@ class HostTest(object):
         self._write_test()
         self._read_test()
 
-
-    def host_rescan_r(self):
-        '''
-        vplx rescan after delete
-        '''
-        s.scsi_rescan(SSH, 'r')
 
 
 if __name__ == "__main__":

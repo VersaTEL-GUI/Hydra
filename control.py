@@ -164,7 +164,7 @@ class HydraControl():
                 # remove all deleted disk device on vplx and host
 
                 self._crm.vplx_rescan_r()
-                self._host.host_rescan_r()
+                host.host_rescan_r()
                 print(f'{"":-^80}', '\n')
             else:
                 s.pwe('User canceled deleting proccess ...', 2, 2)
