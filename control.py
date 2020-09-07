@@ -47,7 +47,6 @@ class HydraControl():
         id_list = s.id_str_to_list(args.id_range)
         consts.set_glo_str(args.uniq_str)
 
-        self.update_attribute('str')
         iqn = s.generate_iqn('0')
         consts.append_glo_iqn_list(iqn)
 
@@ -73,7 +72,7 @@ class HydraControl():
         num = 0
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
         consts.set_glo_str('maxhost')
-        self.update_attribute('id', 'str')
+        self.update_attribute('id')
         try:
             self._netapp.create_map()
             self._drbd.cfg()
@@ -107,7 +106,8 @@ class HydraControl():
             if args.random_number and args.capacity>args.random_number \
             else args.capacity
 
-        self.update_attribute('str')
+        w = lambda x, y: x if x and x < y else y
+        random_number = w(args.random_number, args.capacity)
 
         format_width = 105 if consts.glo_rpl() == 'yes' else 80
 
@@ -140,8 +140,6 @@ class HydraControl():
         if args.uniq_str:
             consts.set_glo_str(args.uniq_str)
 
-        self.update_attribute('id', 'str')
-
         crm_to_del_list = s.get_to_del_list(self._crm.get_all_cfgd_res())
         drbd_to_del_list = s.get_to_del_list(self._drbd.get_all_cfgd_drbd())
         lun_to_del_list = s.get_to_del_list(self._netapp.get_all_cfgd_lun())
@@ -162,7 +160,6 @@ class HydraControl():
                 self._netapp.del_luns(lun_to_del_list)
                 s.pwl('Start to remove all deleted disk device on netapp/ vplx/ host', 0)
                 # remove all deleted disk device on vplx and host
-
                 vplx.rescan_after_remove()
                 host.rescan_after_remove()
                 print(f'{"":-^80}', '\n')
