@@ -102,9 +102,9 @@ class HydraControl():
         consts.set_glo_id_list(id_list)
         consts.set_glo_str('maxhost')
 
-        random_number = args.random_number \
-            if args.random_number and args.capacity>args.random_number \
-            else args.capacity
+        # random_number = args.random_number \
+        #     if args.random_number and args.capacity>args.random_number \
+        #     else args.capacity
 
         w = lambda x, y: x if x and x < y else y
         random_number = w(args.random_number, args.capacity)
