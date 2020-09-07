@@ -82,8 +82,7 @@ class VplxDrbd(object):
         '''
         Prepare DRDB resource config file
         '''
-        gnd = s.GetNewDisk(SSH, NETAPP_IP)
-        blk_dev_name = gnd.get_disk_from_netapp()
+        blk_dev_name = s.GetNewDisk(SSH, NETAPP_IP).get_disk_from_netapp()
         self._create_config_file(blk_dev_name, res_name)
 
     def _create_config_file(self, blk_dev_name, res_name):
@@ -210,11 +209,14 @@ class VplxDrbd(object):
         drbd_down_cmd = f'drbdadm down {res_name}'
         oprt_id = s.get_oprt_id()
         down_result = s.get_ssh_cmd(SSH, unique_str, drbd_down_cmd, oprt_id)
-        if down_result['sts']:
-            s.pwl(f'Down the DRBD resource "{res_name}" successfully',2)
-            return True
+        if down_result:
+            if down_result['sts']:
+                s.pwl(f'Down the DRBD resource "{res_name}" successfully',2)
+                return True
+            else:
+                s.pwce(f'Failed to stop DRBD "{res_name}"', 4, 2)
         else:
-            s.pwce(f'Failed to stop DRBD "{res_name}"', 4, 2)
+            s.handle_exception()
 
     def _del_config(self, res_name):
         '''
@@ -224,11 +226,14 @@ class VplxDrbd(object):
         drbd_del_cmd = f'rm /etc/drbd.d/{res_name}.res'
         oprt_id = s.get_oprt_id()
         del_result = s.get_ssh_cmd(SSH, unique_str, drbd_del_cmd, oprt_id)
-        if del_result['sts']:
-            s.pwl(f'Removed the DRBD resource "{res_name}" config file successfully',2)
-            return True
+        if del_result:
+            if del_result['sts']:
+                s.pwl(f'Removed the DRBD resource "{res_name}" config file successfully',2)
+                return True
+            else:
+                s.pwce('Failed to remove DRBD config file', 4, 2)
         else:
-            s.pwce('Failed to remove DRBD config file', 4, 2)
+            s.handle_exception()
 
     def get_all_cfgd_drbd(self):
         # get list of all configured crm res
@@ -282,7 +287,6 @@ class VplxCrm(object):
         lu_name = f'res_{self.str}_{self.id}'
         self._modify_allow_initiator(lu_name)
         self._crm_and_targetcli_verify(lu_name)
-
 
     def _create(self, lu_name):
         '''
@@ -498,6 +502,7 @@ class VplxCrm(object):
         s.scsi_rescan(SSH, 'r')
     
     def _modify_allow_initiator(self, lu_name):
+        s.pwl('Start to modify_allow_initiator', 2)
         iqn_string=' '.join(consts.glo_iqn_list())
         cmd=f'crm conf set {lu_name}.allowed_initiators "{iqn_string}"'
         oprt_id=s.get_oprt_id()
@@ -541,7 +546,7 @@ class VplxCrm(object):
         if self._cyclic_check_crm_start(lu_name,6,200):
             s.pwl('Success in modify the allow initiator', 2, oprt_id)
         else:
-            s.pwe('Failed in verify the allow initiator', 2, 2)  
+            s.pwe('Failed to modify the allowed initiator', 2, 2)
         
 
 

@@ -61,7 +61,7 @@ class Storage:
         cmd = f'lun create -s 10m -t linux /vol/esxi/{lun_name}'
         info_msg = f'Start to create LUN, LUN name: "{lun_name}",LUN ID: "{self.id}"'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
-        result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
+        result = s.get_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
             s.pwl(f'Succeed in creating LUN "{lun_name}"', 3, oprt_id, 'finish')
         else:
@@ -76,7 +76,7 @@ class Storage:
         info_msg = f'Start to map LUN, LUN name: "{lun_name}", LUN ID: "{self.id}"'
         cmd = f'lun map /vol/esxi/{lun_name} hydra {self.id}'
         s.pwl(f'{info_msg}', 2, oprt_id, 'start')
-        result = s.ex_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
+        result = s.get_telnet_cmd(TELNET_CONN, unique_str, cmd, oprt_id)
         if result:
             re_string=f'LUN /vol/esxi/{lun_name} was mapped to initiator group hydra={self.id}'
             re_result=s.re_search(re_string, result)
@@ -94,7 +94,7 @@ class Storage:
         unique_str = '2ltpi6N5'
         oprt_id = s.get_oprt_id()
         unmap = f'lun unmap /vol/esxi/{lun_name} hydra'
-        unmap_result = s.ex_telnet_cmd(TELNET_CONN, unique_str, unmap, oprt_id)
+        unmap_result = s.get_telnet_cmd(TELNET_CONN, unique_str, unmap, oprt_id)
         if unmap_result:
             unmap_re = r'unmapped from initiator group hydra'
             re_result = s.re_search(unmap_re, unmap_result)
@@ -115,7 +115,7 @@ class Storage:
         unique_str = '2ltpi6N3'
         oprt_id = s.get_oprt_id()
         destroy_cmd = f'lun destroy /vol/esxi/{lun_name}'
-        destroy_result = s.ex_telnet_cmd(TELNET_CONN, unique_str, destroy_cmd, oprt_id)
+        destroy_result = s.get_telnet_cmd(TELNET_CONN, unique_str, destroy_cmd, oprt_id)
         if destroy_result:
             re_destroy = f'LUN /vol/esxi/{lun_name} destroyed'
             re_result = s.re_search(re_destroy, destroy_result)
@@ -130,7 +130,7 @@ class Storage:
     def get_all_cfgd_lun(self):
         # get list of all configured luns
         cmd_lun_show = 'lun show'
-        show_result = s.ex_telnet_cmd(TELNET_CONN,
+        show_result = s.get_telnet_cmd(TELNET_CONN,
             '2lYpiKm3', cmd_lun_show, s.get_oprt_id())
         if show_result:
             re_lun = f'/vol/esxi/(\w*_[0-9]{{1,3}})'

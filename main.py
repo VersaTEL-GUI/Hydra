@@ -84,7 +84,7 @@ class HydraArgParse():
             '--all',
             dest='all',
             action="store_true",
-            help='Replay all'
+            help='Replay all recorded transactions'
         )
         #lun or maxlun
         self.parser_lun = sub_parser.add_parser(
@@ -182,7 +182,7 @@ class HydraArgParse():
         self.parser_delete_re.set_defaults(func=self.ctrl.delete_resource)
         self.parser_replay.set_defaults(func=self.replay)
         self.parser.set_defaults(func=self.parser_print_help)
-        self.parser_test.set_defaults(func=self.ctrl.run_test())
+        self.parser_test.set_defaults(func=self.ctrl.run_test)
 
     def iqn_print_help(self, *args):
         self.parser_iqn.print_help()

@@ -31,7 +31,7 @@ def collect_debug_log():
     stor_dbg = storage.DebugLog()
     stor_dbg.get_storage_debug(local_debug_folder)
 
-    s.prt(f'All debug log stor in folder localhost {local_debug_folder}')
+    s.prt(f'All debug log stored in localfolder {local_debug_folder}')
     # except Exception as e:
     #     #-m:s.pwl应该加一个warning级别,便于标识出错信息
     #     # s.pwl('Log collection job is not completely successful')

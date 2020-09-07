@@ -10,7 +10,6 @@ import debug_log
 import sundry as s
 
 TARGET_IQN='iqn.2020-06.com.example:test-max-lun'
-NETAPP_IP = '10.203.1.231'
 
 def record_exception(func):
     """
@@ -78,18 +77,6 @@ def scsi_rescan(ssh, mode):
     else:
         return True
 
-def get_lsscsi(ssh, func_str, oprt_id):
-    pwl('Start to get the list of all SCSI device',3,oprt_id,'start')
-    cmd_lsscsi = 'lsscsi'
-    result_lsscsi = get_ssh_cmd(ssh, func_str, cmd_lsscsi, oprt_id)
-    if result_lsscsi:
-        if result_lsscsi['sts']:
-            return result_lsscsi['rst'].decode('utf-8')
-        else:
-            pwe(f'Failed to excute Command "{cmd_lsscsi}"',4,1)
-    else:
-        handle_exception()
-
 def re_search(re_string, tgt_string):
     logger = consts.glo_log()
     oprt_id = get_oprt_id()
@@ -131,7 +118,7 @@ def get_ssh_cmd(ssh_obj, unique_str, cmd, oprt_id):
             change_pointer(db_id)
         return result
 
-def ex_telnet_cmd(telnet_obj, unique_str, cmd, oprt_id):
+def get_telnet_cmd(telnet_obj, unique_str, cmd, oprt_id):
     logger = consts.glo_log()
     global RPL
     RPL = consts.glo_rpl()
@@ -379,12 +366,6 @@ def get_tid_list(args, db_obj):
         tid_list = db_obj.get_all_transaction()
     return tid_list
 
-def get_random_number(args):
-    if args.random_number:
-        random_number = args.random_number if args.capacity > args.random_number else args.capacity
-    else:
-        random_number = args.capacity
-    return random_number
 
 class GetNewDisk():
     def __init__(self, ssh_obj, target_ip):
@@ -404,7 +385,7 @@ class GetNewDisk():
 
     def _find_new_disk(self, string):
         id = consts.glo_id()
-        result_lsscsi = get_lsscsi(self.ssh_obj, 'D37nG6Yi', get_oprt_id())
+        result_lsscsi = self._get_lsscsi(self.ssh_obj, 'D37nG6Yi', get_oprt_id())
         re_string = f'\:{id}\].*{string}[ 0-9a-zA-Z._]*(/dev/sd[a-z]{{1,3}})'
         disk_dev = re_search(re_string, result_lsscsi)
         if disk_dev:
@@ -426,6 +407,18 @@ class GetNewDisk():
             else:
                 pwce('No disk found, exit the program', 4, 2)
 
+    def _get_lsscsi(self, ssh, func_str, oprt_id):
+        pwl('Start to get the list of all SCSI device', 3, oprt_id, 'start')
+        cmd_lsscsi = 'lsscsi'
+        result_lsscsi = get_ssh_cmd(ssh, func_str, cmd_lsscsi, oprt_id)
+        if result_lsscsi:
+            if result_lsscsi['sts']:
+                return result_lsscsi['rst'].decode('utf-8')
+            else:
+                pwe(f'Failed to excute Command "{cmd_lsscsi}"', 4, 1)
+        else:
+            handle_exception()
+
 
 
 class DebugLog(object):
@@ -443,7 +436,6 @@ class DebugLog(object):
         self.SSH.execute_command(f'mkdir {self.dbg_folder}/{self.host}')
         if output['rst']:
             pass
-
         else:
             prt(f'Can not create folder {self.dbg_folder} to stor debug log', 3, 2)
             sys.exit()

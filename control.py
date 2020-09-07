@@ -1,7 +1,6 @@
 #coding:utf-8
 
 import consts
-import time
 import vplx
 import storage
 import host_initiator as host
@@ -82,14 +81,15 @@ class HydraControl():
                 s.prt(f'The current IQN number of max supported hosts test is {num}')
                 iqn = s.generate_iqn(num)
                 consts.append_glo_iqn_list(iqn)
+                res_name = f'res_{consts.glo_str()}_{consts.glo_id()}'
                 if num == 0:
                     self._crm.cfg()
                 elif num > 0:
-                    self._drbd.status_verify(f'res_{consts.glo_str()}_{consts.glo_id()}')
+                    self._drbd.status_verify(res_name)
                     self._crm.modify_initiator_and_verify()
-                print(f'{"":-^{format_width}}', '\n')
                 host.change_iqn(iqn)
                 self._host.io_test()
+                print(f'{"":-^{format_width}}', '\n')
                 num += 1
         except consts.ReplayExit:
             print(f'{"":-^{format_width}}', '\n')
@@ -140,8 +140,8 @@ class HydraControl():
         if args.uniq_str:
             consts.set_glo_str(args.uniq_str)
 
-        self.update_attribute('id')
-        self.update_attribute('str')
+        self.update_attribute('id', 'str')
+
         crm_to_del_list = s.get_to_del_list(self._crm.get_all_cfgd_res())
         drbd_to_del_list = s.get_to_del_list(self._drbd.get_all_cfgd_drbd())
         lun_to_del_list = s.get_to_del_list(self._netapp.get_all_cfgd_lun())
@@ -160,8 +160,9 @@ class HydraControl():
                 self._crm.del_crms(crm_to_del_list)
                 self._drbd.del_drbds(drbd_to_del_list)
                 self._netapp.del_luns(lun_to_del_list)
-                s.pwl('Start to remove all deleted disk device on netapp vplx host', 0)
+                s.pwl('Start to remove all deleted disk device on netapp/ vplx/ host', 0)
                 # remove all deleted disk device on vplx and host
+
                 self._crm.vplx_rescan_r()
                 self._host.host_rescan_r()
                 print(f'{"":-^80}', '\n')
